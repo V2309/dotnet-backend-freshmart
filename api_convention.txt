@@ -1,0 +1,93 @@
+API CONVENTION - .NET CORE
+
+Structure
+Controllers/   -> HTTP endpoints only
+DTOs/          -> Request/Response DTOs
+Models/        -> Entity models + Enums
+Data/          -> DbContext, configurations
+Repositories/  -> Database access
+Services/      -> Business logic
+Mappings/      -> Entity <-> DTO mapping
+Validators/    -> Request validation
+Exceptions/    -> Custom exceptions
+Middleware/    -> Global exception handling, middleware
+
+REST ROUTES
+GET    /api/products              -> Get all
+GET    /api/products/{id}         -> Get by id
+POST   /api/products              -> Create
+PUT    /api/products/{id}         -> Update
+DELETE /api/products/{id}         -> Delete
+
+GET    /api/employees
+GET    /api/employees/{id}
+POST   /api/employees
+PUT    /api/employees/{id}
+DELETE /api/employees/{id}
+
+NAMING
+Controller: ProductController, EmployeeController
+Service: ProductService, EmployeeService
+Repository: ProductRepository, EmployeeRepository
+DTO: CreateProductRequest, UpdateProductRequest, ProductResponse
+       CreateEmployeeRequest, UpdateEmployeeRequest, EmployeeResponse
+Validator: CreateProductValidator, UpdateProductValidator
+           CreateEmployeeValidator, UpdateEmployeeValidator
+Configuration: ProductConfiguration, EmployeeConfiguration
+
+REQUEST FLOW
+Controller
+    -> Validator
+    -> Service
+    -> Repository
+    -> DbContext
+    -> PostgreSQL
+
+RESPONSE FLOW
+PostgreSQL
+    -> DbContext
+    -> Repository
+    -> Service
+    -> Mapping
+    -> Controller
+    -> Response DTO
+
+RULES
+1. Controller does not contain business logic.
+2. Service handles business logic.
+3. Repository handles database queries.
+4. DTOs are used for API input/output; do not expose Entity directly.
+5. Validators validate Request DTOs.
+6. Mapping is handled in Mappings/.
+7. Use async/await for database operations.
+8. Use REST status codes:
+   200 OK       -> successful GET/PUT
+   201 Created  -> successful POST
+   204 NoContent -> successful DELETE
+   400 BadRequest -> invalid request
+   404 NotFound -> resource not found
+   409 Conflict -> duplicate/conflict
+   500 InternalServerError -> unexpected error
+9. Route uses plural resource names: /api/products, /api/employees.
+10. C# uses PascalCase; database uses snake_case.
+
+EXAMPLE
+POST /api/products
+
+Request:
+{
+  "name": "Milk",
+  "sku": "MILK001",
+  "price": 25000,
+  "stockQuantity": 100
+}
+
+Response:
+{
+  "id": 1,
+  "name": "Milk",
+  "sku": "MILK001",
+  "price": 25000,
+  "stockQuantity": 100,
+  "isActive": true
+}

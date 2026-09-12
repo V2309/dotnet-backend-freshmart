@@ -1,0 +1,6 @@
+@dotnet_backend_freshmart_HostAddress = http://localhost:5211
+
+GET {{dotnet_backend_freshmart_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

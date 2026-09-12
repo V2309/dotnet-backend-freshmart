@@ -1,0 +1,18 @@
+## .NET / ASP.NET Core
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+## Secrets – KHÔNG commit lên GitHub
+appsettings.json
+appsettings.*.json
+
+## Build artifacts
+publish/
+*.nupkg
+
+## OS
+.DS_Store
+Thumbs.db

@@ -12,6 +12,8 @@ appsettings.*.json
 ## Build artifacts
 publish/
 *.nupkg
+node_modules/
+dist/
 
 ## OS
 .DS_Store

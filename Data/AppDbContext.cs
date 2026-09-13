@@ -14,6 +14,9 @@ namespace dotnet_backend_freshmart.Data
 
         public DbSet<Employee> Employees { get; set; } = null!;
 
+        public DbSet<Category> Categories { get; set; } = null!;
+
+        public DbSet<Supplier> Suppliers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,6 +28,11 @@ namespace dotnet_backend_freshmart.Data
             // Sequence để sinh mã nhân viên NV000001, NV000002, ...
             // nextval() là atomic → không bao giờ trùng dù nhiều request đồng thời
             modelBuilder.HasSequence<int>("employee_code_seq")
+                .StartsAt(1)
+                .IncrementsBy(1);
+
+            // Sequence sinh mã nhà cung cấp NCC000001, NCC000002...
+            modelBuilder.HasSequence<int>("supplier_code_seq")
                 .StartsAt(1)
                 .IncrementsBy(1);
 

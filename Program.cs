@@ -1,88 +1,49 @@
-using dotnet_backend_freshmart.Data;
+using dotnet_backend_freshmart.Config;
 using dotnet_backend_freshmart.Middleware;
-using dotnet_backend_freshmart.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
-using System.Text;
+using System.Text.Json.Serialization;
+
 
 var builder = WebApplication.CreateBuilder(args);
-
-// 1. Kết nối PostgreSQL với snake_case naming convention
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .UseSnakeCaseNamingConvention());
-
-// 2. Route options
-builder.Services.Configure<RouteOptions>(options =>
-{
-    options.LowercaseUrls = true;
-});
-
+// ========================================================
+// 1. ĐĂNG KÝ CÁC DỊCH VỤ (SERVICES CONFIGURATION)
+// ========================================================
+builder.Services.AddDatabaseConfiguration(builder.Configuration); // Kết nối DB
+builder.Services.AddApplicationServices();                        // Đăng ký Business Services (DI)
+builder.Services.AddCorsConfiguration();                           // Cấu hình CORS
+builder.Services.AddJwtAuthentication(builder.Configuration);      // Xác thực JWT
+builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Không escape ký tự Unicode → hiển thị tiếng Việt trực tiếp trong mọi response
+
+        // 👇 THÊM DÒNG NÀY: Cho phép Backend nhận cả chữ "Cashier" lẫn số 0 từ Frontend
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        // Hiển thị tiếng Việt trực tiếp không bị mã hóa Unicode
         options.JsonSerializerOptions.Encoder =
             System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
     });
-
-// 3. Cấu hình OpenAPI (Scalar UI)
 builder.Services.AddOpenApi();
-
-// 4. Đăng ký DI – Services
-builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
-builder.Services.AddScoped<ITokenService, JwtTokenService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-
-// 5. Cấu hình JWT Bearer Authentication
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Jwt:Key chưa được cấu hình trong appsettings.json.");
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false; // Đổi thành true trên production khi chạy HTTPS
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
-// 6. Cấu hình Authorization
-builder.Services.AddAuthorization();
-
+// ========================================================
+// 2. CẤU HÌNH HTTP REQUEST PIPELINE (MIDDLEWARES)
+// ========================================================
 var app = builder.Build();
-
-// 7. Global Exception Handling Middleware (phải đứng ĐẦU pipeline)
+// 1. Global Exception Handler (luôn ở đầu pipeline)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-// 8. Pipeline HTTP request
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-
-app.UseHttpsRedirection();
-
-// QUAN TRỌNG: UseAuthentication PHẢI đứng trước UseAuthorization
+// 2. ĐẶT CORS ĐỨNG ĐẦU (Trước HttpsRedirection và Trước Authentication)
+app.UseCors(ServiceConfig.CorsPolicy);
+// 3. Chỉ ép HTTPS trên môi trường Production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

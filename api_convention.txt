@@ -1,93 +1,196 @@
-API CONVENTION - .NET CORE
+API CONVENTION - .NET CORE (FreshMart)
 
-Structure
-Controllers/   -> HTTP endpoints only
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Controllers/   -> HTTP endpoints only (thin controller)
 DTOs/          -> Request/Response DTOs
-Models/        -> Entity models + Enums
-Data/          -> DbContext, configurations
-Repositories/  -> Database access
-Services/      -> Business logic
-Mappings/      -> Entity <-> DTO mapping
-Validators/    -> Request validation
-Exceptions/    -> Custom exceptions
-Middleware/    -> Global exception handling, middleware
+  Auth/        -> LoginDto, RegisterEmployeeDto, AuthResponseDto, CurrentUserDto
+  Common/      -> ApiResponse<T> (wrapper chung cho mọi response)
+Models/        -> Entity models
+  Enums/       -> Enum types
+Data/          -> AppDbContext, EF Configurations
+  Configuration/ -> IEntityTypeConfiguration<T>
+Repositories/  -> Database access (dùng khi query phức tạp)
+Services/      -> Business logic (IFooService + FooService)
+Mappings/      -> Entity <-> DTO (extension methods)
+Validators/    -> FluentValidation hoặc DataAnnotations
+Exceptions/    -> AppException, NotFoundException, ConflictException...
+Middleware/    -> ExceptionHandlingMiddleware (global error handler)
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REST ROUTES
-GET    /api/products              -> Get all
-GET    /api/products/{id}         -> Get by id
-POST   /api/products              -> Create
-PUT    /api/products/{id}         -> Update
-DELETE /api/products/{id}         -> Delete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GET    /api/v1/products              -> Get all
+GET    /api/v1/products/{id}         -> Get by id
+POST   /api/v1/products              -> Create      (201 Created)
+PUT    /api/v1/products/{id}         -> Update full (200 OK)
+DELETE /api/v1/products/{id}         -> Delete      (204 NoContent)
 
-GET    /api/employees
-GET    /api/employees/{id}
-POST   /api/employees
-PUT    /api/employees/{id}
-DELETE /api/employees/{id}
+GET    /api/v1/employees
+GET    /api/v1/employees/{id}
+POST   /api/v1/employees
+PUT    /api/v1/employees/{id}
+DELETE /api/v1/employees/{id}
 
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/login-pin
+GET    /api/v1/auth/me
+POST   /api/v1/auth/logout
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 NAMING
-Controller: ProductController, EmployeeController
-Service: ProductService, EmployeeService
-Repository: ProductRepository, EmployeeRepository
-DTO: CreateProductRequest, UpdateProductRequest, ProductResponse
-       CreateEmployeeRequest, UpdateEmployeeRequest, EmployeeResponse
-Validator: CreateProductValidator, UpdateProductValidator
-           CreateEmployeeValidator, UpdateEmployeeValidator
-Configuration: ProductConfiguration, EmployeeConfiguration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Controller   : ProductsController, EmployeesController, AuthController
+Interface    : IProductService, IEmployeeService, IAuthService
+Service      : ProductService, EmployeeService, AuthService
+Repository   : ProductRepository, EmployeeRepository
+DTO Request  : CreateProductRequest, UpdateProductRequest
+DTO Response : ProductResponse, EmployeeResponse
+Validator    : CreateProductValidator, UpdateProductValidator
+Config       : ProductConfiguration, EmployeeConfiguration
+Mapping      : ProductMapping, EmployeeMapping (static extension methods)
+Exception    : NotFoundException, ConflictException, ForbiddenException
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REQUEST FLOW
-Controller
-    -> Validator
-    -> Service
-    -> Repository
-    -> DbContext
-    -> PostgreSQL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HTTP Request
+    -> ExceptionHandlingMiddleware   (bao ngoài toàn bộ pipeline)
+    -> Controller                    (validate input, gọi service)
+    -> Validator                     (DataAnnotations / FluentValidation)
+    -> IFooService                   (business logic)
+        -> AppDbContext / Repository (database query)
+        -> Mappings                  (entity -> DTO)
+    -> ApiResponse<T>.Ok(data)       (wrap response)
+    -> HTTP Response
 
-RESPONSE FLOW
-PostgreSQL
-    -> DbContext
-    -> Repository
-    -> Service
-    -> Mapping
-    -> Controller
-    -> Response DTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESPONSE FORMAT (BẮT BUỘC thống nhất)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Thành công:
+{
+  "success": true,
+  "message": "...",
+  "data": { ... }      // hoặc null nếu không có data
+}
 
+Lỗi:
+{
+  "success": false,
+  "message": "...",
+  "errors": [ ... ]    // optional, dùng cho validation errors
+}
+
+Dùng ApiResponse<T> wrapper:
+  return Ok(ApiResponse<FooResponse>.Ok(data, "Thành công"));
+  return StatusCode(201, ApiResponse<FooResponse>.Ok(data, "Tạo thành công"));
+  return Ok(ApiResponse.OkNoData("Đăng xuất thành công."));
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXCEPTION HANDLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Service throw AppException (không return HTTP result)
+- ExceptionHandlingMiddleware bắt và map sang HTTP status + ApiResponse
+
+  throw new NotFoundException("Sản phẩm không tồn tại.");        -> 404
+  throw new ConflictException("SKU đã tồn tại.");                 -> 409
+  throw new ForbiddenException("Không có quyền.");                -> 403
+  throw new BadRequestException("Dữ liệu không hợp lệ.");        -> 400
+  // Unexpected exception                                          -> 500
+
+- Controller KHÔNG try/catch thủ công
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAPPING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Mapping nằm trong Mappings/ dưới dạng static extension methods
+- KHÔNG map trong Controller hoặc Service
+
+// Mappings/ProductMapping.cs
+public static class ProductMapping
+{
+    public static ProductResponse ToResponse(this Product p) => new() { ... };
+}
+
+// Dùng trong Service:
+return product.ToResponse();
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DI REGISTRATION (Program.cs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>(); // Đầu pipeline
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 RULES
-1. Controller does not contain business logic.
-2. Service handles business logic.
-3. Repository handles database queries.
-4. DTOs are used for API input/output; do not expose Entity directly.
-5. Validators validate Request DTOs.
-6. Mapping is handled in Mappings/.
-7. Use async/await for database operations.
-8. Use REST status codes:
-   200 OK       -> successful GET/PUT
-   201 Created  -> successful POST
-   204 NoContent -> successful DELETE
-   400 BadRequest -> invalid request
-   404 NotFound -> resource not found
-   409 Conflict -> duplicate/conflict
-   500 InternalServerError -> unexpected error
-9. Route uses plural resource names: /api/products, /api/employees.
-10. C# uses PascalCase; database uses snake_case.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1.  Controller chỉ: nhận request, gọi service, trả ApiResponse. Không có logic.
+2.  Service xử lý toàn bộ business logic. Throw AppException khi lỗi.
+3.  Repository xử lý database queries phức tạp. Query đơn giản dùng thẳng DbContext trong Service.
+4.  DTO dùng cho API input/output. KHÔNG expose Entity trực tiếp.
+5.  Validators validate Request DTOs (DataAnnotations hoặc FluentValidation).
+6.  Mapping nằm trong Mappings/ (extension methods). KHÔNG map inline.
+7.  Dùng async/await cho mọi database operation.
+8.  HTTP Status codes:
+    200 OK           -> GET, PUT thành công
+    201 Created      -> POST tạo resource thành công
+    204 NoContent    -> DELETE thành công
+    400 BadRequest   -> input không hợp lệ
+    401 Unauthorized -> chưa đăng nhập
+    403 Forbidden    -> không có quyền
+    404 NotFound     -> resource không tồn tại
+    409 Conflict     -> trùng dữ liệu
+    500 Internal     -> lỗi hệ thống
+9.  Route: plural, lowercase, versioned: /api/v1/products, /api/v1/employees
+10. C# dùng PascalCase. Database dùng snake_case (auto qua EFCore.NamingConventions).
+11. JSON response: camelCase. Không escape Unicode (\uXXXX).
+12. Secrets (connection string, JWT key) KHÔNG commit lên Git. Dùng appsettings.json local.
 
-EXAMPLE
-POST /api/products
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE – POST /api/v1/products
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Request:
 {
-  "name": "Milk",
+  "name": "Sữa tươi Vinamilk",
   "sku": "MILK001",
   "price": 25000,
   "stockQuantity": 100
 }
 
-Response:
+Response 201:
 {
-  "id": 1,
-  "name": "Milk",
-  "sku": "MILK001",
-  "price": 25000,
-  "stockQuantity": 100,
-  "isActive": true
+  "success": true,
+  "message": "Tạo sản phẩm thành công",
+  "data": {
+    "id": 1,
+    "name": "Sữa tươi Vinamilk",
+    "sku": "MILK001",
+    "price": 25000,
+    "stockQuantity": 100,
+    "isActive": true
+  }
 }
+
+Response 409 (SKU trùng):
+{
+  "success": false,
+  "message": "SKU 'MILK001' đã tồn tại."
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHECKLIST KHI THÊM API MỚI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ ] Tạo Model + Enum (nếu cần)
+[ ] Tạo EF Configuration (Data/Configuration/)
+[ ] Tạo Migration (dotnet ef migrations add ...)
+[ ] Tạo DTOs: CreateXxxRequest, UpdateXxxRequest, XxxResponse
+[ ] Tạo Mapping: XxxMapping.cs (extension method ToResponse)
+[ ] Tạo IXxxService + XxxService (business logic + throw exceptions)
+[ ] Tạo IXxxRepository + XxxRepository (nếu query phức tạp)
+[ ] Tạo XxxController (thin, inject IXxxService)
+[ ] Đăng ký DI trong Program.cs
+[ ] Test các endpoint + error cases

@@ -1,0 +1,6 @@
+{
+  "name": "FreshMart - Grocery Store Management & POS",
+  "description": "Enterprise Vietnamese Grocery Store Management & POS System with real-time checkout, inventory tracking, and sales analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

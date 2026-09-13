@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #fff9f2;
+  --color-primary-100: #fef0dd;
+  --color-primary-200: #fed8ab;
+  --color-primary-300: #fdbb77;
+  --color-primary-400: #fea858;
+  --color-primary-500: #fe9f43;
+  --color-primary-600: #f38a22;
+  --color-primary-700: #d97706;
+  --color-primary-800: #b45309;
+  --color-primary-900: #78350f;
+  --color-primary-950: #451a03;
+}
+
+:root {
+  --primary-50: #fff9f2;
+  --primary-100: #fef0dd;
+  --primary-200: #fed8ab;
+  --primary-300: #fdbb77;
+  --primary-400: #fea858;
+  --primary-500: #fe9f43;
+  --primary-600: #f38a22;
+  --primary-700: #d97706;
+  --primary-800: #b45309;
+  --primary-900: #78350f;
+}
+
+@layer base {
+  body {
+    font-family: 'Nunito', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #212B36;
+    background-color: #F7F7F7;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* DreamsPOS styled smooth compact scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F7F7F7;
+}
+::-webkit-scrollbar-thumb {
+  background: #E0E4EC;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C4CAD5;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

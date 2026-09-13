@@ -1,0 +1,734 @@
+QUY TẮC GỌI API TỪ FRONTEND
+Kiến trúc: React / Next.js + TypeScript + Axios + ASP.NET Core API
+Nguyên tắc chính: Component → Service → apiClient → Backend
+
+==================================================
+1. CẤU TRÚC FOLDER
+==================================================
+
+src/
+├── services/
+│   ├── apiClient.ts
+│   ├── auth.service.ts
+│   ├── product.service.ts
+│   ├── employee.service.ts
+│   ├── customer.service.ts
+│   └── order.service.ts
+│
+├── types/
+│   ├── auth.ts
+│   ├── product.ts
+│   ├── employee.ts
+│   └── ...
+│
+├── hooks/
+├── components/
+└── app/ hoặc pages/
+
+Quy tắc:
+- services/ chứa toàn bộ logic gọi HTTP API.
+- apiClient.ts chứa Axios instance dùng chung.
+- Mỗi module/resource có một service riêng.
+- types/ chứa request/response types.
+- Component KHÔNG gọi axios trực tiếp.
+
+==================================================
+2. FLOW GỌI API
+==================================================
+
+Component
+    ↓
+Service
+    ↓
+apiClient
+    ↓
+HTTP Request
+    ↓
+ASP.NET Core Controller
+    ↓
+Service
+    ↓
+Repository / DbContext
+    ↓
+Database
+
+Ví dụ:
+
+ProductPage
+    ↓
+productService.getAll()
+    ↓
+apiClient.get("/products")
+    ↓
+GET /api/v1/products
+
+==================================================
+3. apiClient.ts
+==================================================
+
+Chỉ tạo một Axios instance dùng chung:
+
+// services/apiClient.ts
+
+import axios from "axios";
+
+export const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+});
+
+apiClient chịu trách nhiệm:
+- baseURL
+- headers mặc định
+- credentials/cookie
+- interceptor
+- refresh token nếu cần
+- xử lý HTTP-level behavior
+
+Không đặt logic nghiệp vụ Product/Employee/Order vào apiClient.
+
+==================================================
+4. ENVIRONMENT
+==================================================
+
+Không hard-code URL backend.
+
+Đúng:
+
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+
+apiClient:
+baseURL: process.env.NEXT_PUBLIC_API_URL
+
+Sai:
+
+axios.get("http://localhost:5000/api/v1/products");
+
+Khi deploy chỉ cần thay environment variable.
+
+==================================================
+5. SERVICE
+==================================================
+
+Mỗi resource có một service riêng.
+
+Ví dụ:
+
+// services/product.service.ts
+
+import { apiClient } from "./apiClient";
+import type {
+  Product,
+  CreateProductRequest,
+  UpdateProductRequest,
+} from "@/types/product";
+
+export const productService = {
+  getAll: async (): Promise<Product[]> => {
+    const response = await apiClient.get("/products");
+    return response.data.data;
+  },
+
+  getById: async (id: number): Promise<Product> => {
+    const response = await apiClient.get(`/products/${id}`);
+    return response.data.data;
+  },
+
+  create: async (
+    data: CreateProductRequest
+  ): Promise<Product> => {
+    const response = await apiClient.post("/products", data);
+    return response.data.data;
+  },
+
+  update: async (
+    id: number,
+    data: UpdateProductRequest
+  ): Promise<Product> => {
+    const response = await apiClient.put(
+      `/products/${id}`,
+      data
+    );
+    return response.data.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/products/${id}`);
+  },
+};
+
+==================================================
+6. COMPONENT
+==================================================
+
+Component chỉ gọi service.
+
+Đúng:
+
+import { productService } from "@/services/product.service";
+
+const products = await productService.getAll();
+
+Tạo:
+
+await productService.create({
+  name: "Milk",
+  sku: "MILK-001",
+  price: 25000,
+  stockQuantity: 100,
+});
+
+Sai:
+
+import axios from "axios";
+
+const response = await axios.get(
+  "http://localhost:5000/api/v1/products"
+);
+
+Component không được biết:
+- API URL
+- axios instance
+- endpoint đầy đủ
+- authorization header
+- response envelope
+
+==================================================
+7. SERVICE CHỈ XỬ LÝ API
+==================================================
+
+Service được phép:
+- GET
+- POST
+- PUT
+- PATCH
+- DELETE
+- truyền params
+- truyền body
+- lấy data từ response
+- throw/propagate error
+
+Service KHÔNG được:
+- setState()
+- toast()
+- mở modal
+- redirect UI
+- thao tác DOM
+- phụ thuộc vào component
+
+Ví dụ KHÔNG nên:
+
+productService.create = async (data) => {
+  const response = await apiClient.post("/products", data);
+  toast.success("Created!");
+  router.push("/products");
+};
+
+Toast/redirect nên nằm ở component hoặc hook.
+
+==================================================
+8. TYPES
+==================================================
+
+Request/response type đặt trong types/.
+
+Ví dụ:
+
+// types/product.ts
+
+export interface Product {
+  id: number;
+  name: string;
+  sku: string;
+  price: number;
+  stockQuantity: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProductRequest {
+  name: string;
+  sku: string;
+  price: number;
+  stockQuantity: number;
+}
+
+export interface UpdateProductRequest {
+  name?: string;
+  sku?: string;
+  price?: number;
+  stockQuantity?: number;
+  isActive?: boolean;
+}
+
+Type phải khớp với DTO/response contract của ASP.NET Core.
+
+==================================================
+9. RESPONSE ENVELOPE
+==================================================
+
+Nếu backend trả:
+
+{
+  "statusCode": 200,
+  "message": "Success",
+  "data": {
+    "id": 1,
+    "name": "Milk"
+  }
+}
+
+Service chịu trách nhiệm lấy:
+
+return response.data.data;
+
+Component chỉ nhận:
+
+Product
+
+Không để component xử lý:
+
+response.data.data
+
+Service là lớp chuyển HTTP response thành dữ liệu mà frontend cần.
+
+==================================================
+10. QUERY PARAMETERS
+==================================================
+
+Dùng params của Axios.
+
+Đúng:
+
+apiClient.get("/products", {
+  params: {
+    page: 1,
+    limit: 10,
+    search: "milk",
+    isActive: true,
+  },
+});
+
+Sai:
+
+apiClient.get(
+  "/products?page=1&limit=10&search=milk&isActive=true"
+);
+
+Ví dụ service:
+
+getAll: async (params: ProductQuery) => {
+  const response = await apiClient.get("/products", {
+    params,
+  });
+
+  return response.data.data;
+};
+
+==================================================
+11. CRUD NAMING
+==================================================
+
+Dùng naming thống nhất:
+
+getAll()
+getById(id)
+create(data)
+update(id, data)
+delete(id)
+
+Ví dụ:
+
+productService.getAll()
+productService.getById(1)
+productService.create(data)
+productService.update(1, data)
+productService.delete(1)
+
+Không nên đặt:
+
+fetchProducts()
+saveProduct()
+removeProductData()
+
+trừ khi có lý do rõ ràng.
+
+==================================================
+12. AUTH SERVICE
+==================================================
+
+Ví dụ:
+
+// services/auth.service.ts
+
+import { apiClient } from "./apiClient";
+
+export const authService = {
+  login: async (data: LoginRequest) => {
+    const response = await apiClient.post(
+      "/auth/login",
+      data
+    );
+
+    return response.data.data;
+  },
+
+  register: async (data: RegisterRequest) => {
+    const response = await apiClient.post(
+      "/auth/register",
+      data
+    );
+
+    return response.data.data;
+  },
+
+  getCurrentUser: async () => {
+    const response = await apiClient.get("/auth/me");
+    return response.data.data;
+  },
+
+  logout: async () => {
+    await apiClient.post("/auth/logout");
+  },
+};
+
+Nếu backend dùng HttpOnly Cookie:
+- apiClient dùng withCredentials: true.
+- Frontend không đọc HttpOnly Cookie.
+- Frontend không cần tự lưu password.
+- Không lưu password vào localStorage/sessionStorage.
+
+==================================================
+13. INTERCEPTOR
+==================================================
+
+Interceptor nên đặt trong:
+
+services/apiClient.ts
+
+Có thể dùng để:
+- thêm Authorization header nếu hệ thống dùng access token
+- xử lý 401
+- refresh access token
+- retry request
+- chuẩn hóa HTTP error
+
+Không viết interceptor trong từng service.
+
+Flow:
+
+Component
+    ↓
+productService
+    ↓
+apiClient
+    ↓
+Request Interceptor
+    ↓
+Backend
+
+==================================================
+14. ERROR HANDLING
+==================================================
+
+Service không nên hiển thị UI.
+
+Ví dụ:
+
+try {
+  await productService.create(data);
+} catch (error) {
+  // Component xử lý message/toast
+}
+
+Nếu cần chuẩn hóa error:
+
+services/
+├── apiClient.ts
+├── apiError.ts
+├── product.service.ts
+└── ...
+
+Có thể tạo:
+
+getApiErrorMessage(error)
+
+để frontend luôn lấy message backend theo cùng một cách.
+
+==================================================
+15. LOADING STATE
+==================================================
+
+Loading thuộc về UI layer.
+
+Ví dụ:
+
+const [loading, setLoading] = useState(false);
+
+try {
+  setLoading(true);
+
+  await productService.create(data);
+} finally {
+  setLoading(false);
+}
+
+Không làm:
+
+productService.create()
+→ setLoading()
+
+Service không biết component đang loading hay không.
+
+==================================================
+16. HOOK
+==================================================
+
+Nếu API có state phức tạp, có thể tạo hook:
+
+hooks/
+├── useProducts.ts
+├── useEmployees.ts
+└── useAuth.ts
+
+Flow:
+
+Component
+    ↓
+useProducts()
+    ↓
+productService
+    ↓
+apiClient
+    ↓
+Backend
+
+Hook chịu trách nhiệm:
+- data
+- loading
+- error
+- refetch
+- UI state liên quan đến data
+
+Service vẫn chỉ chịu trách nhiệm API.
+
+==================================================
+17. REACT QUERY
+==================================================
+
+Nếu dùng TanStack Query:
+
+Component
+    ↓
+useQuery / useMutation
+    ↓
+productService
+    ↓
+apiClient
+    ↓
+Backend
+
+Ví dụ:
+
+useQuery({
+  queryKey: ["products"],
+  queryFn: productService.getAll,
+});
+
+Mutation:
+
+useMutation({
+  mutationFn: productService.create,
+});
+
+Không cần React Query cho mọi project.
+Nên dùng khi cần:
+- caching
+- refetch
+- pagination
+- mutation state
+- invalidation
+- shared server state
+
+==================================================
+18. SERVICE FILE THEO MODULE
+==================================================
+
+Đúng:
+
+services/
+├── apiClient.ts
+├── auth.service.ts
+├── product.service.ts
+├── employee.service.ts
+├── customer.service.ts
+├── order.service.ts
+└── report.service.ts
+
+Không nên:
+
+services/
+└── api.ts
+
+với tất cả endpoint của toàn bộ hệ thống.
+
+Mỗi service nên tương ứng với một domain/resource chính.
+
+==================================================
+19. QUY TẮC URL
+==================================================
+
+Nếu apiClient đã có:
+
+baseURL:
+https://api.example.com/api/v1
+
+Service chỉ viết:
+
+"/products"
+"/employees"
+"/orders"
+
+Không viết:
+
+"/api/v1/products"
+
+trừ khi baseURL không chứa /api/v1.
+
+Mục tiêu:
+
+apiClient
+→ URL chung
+
+service
+→ endpoint resource
+
+==================================================
+20. BACKEND DTO ↔ FRONTEND TYPE
+==================================================
+
+ASP.NET Core:
+
+CreateProductDto
+        ↓
+CreateProductRequest
+
+ProductDto
+        ↓
+Product
+
+UpdateProductDto
+        ↓
+UpdateProductRequest
+
+Frontend không cần copy toàn bộ Entity database.
+
+Frontend nên làm việc với API DTO/response contract.
+
+==================================================
+21. KHÔNG GỌI DATABASE TỪ FRONTEND
+==================================================
+
+Frontend:
+
+Component
+ ↓
+Service
+ ↓
+HTTP API
+ ↓
+ASP.NET Core
+ ↓
+Database
+
+Không:
+
+Component
+ ↓
+Database
+
+Frontend chỉ giao tiếp với Backend API.
+
+==================================================
+22. QUY TẮC KHI TẠO API MỚI
+==================================================
+
+Ví dụ thêm Employee API:
+
+Bước 1:
+Tạo type:
+
+types/employee.ts
+
+Bước 2:
+Tạo service:
+
+services/employee.service.ts
+
+Bước 3:
+Khai báo các method:
+
+getAll()
+getById()
+create()
+update()
+delete()
+
+Bước 4:
+Component gọi:
+
+employeeService.getAll()
+
+Không viết axios trực tiếp trong component.
+
+==================================================
+23. CHECKLIST
+==================================================
+
+[ ] API có service riêng chưa?
+[ ] Service có dùng apiClient không?
+[ ] Component có gọi axios trực tiếp không?
+[ ] URL backend có hard-code không?
+[ ] Type request/response đã có chưa?
+[ ] Type có khớp Backend DTO không?
+[ ] Response envelope được xử lý ở service chưa?
+[ ] Query params dùng params chưa?
+[ ] Loading nằm ở UI/hook chưa?
+[ ] Toast/redirect nằm ngoài service chưa?
+[ ] Auth/interceptor nằm ở apiClient chưa?
+[ ] Service có chứa UI logic không?
+
+==================================================
+24. NGUYÊN TẮC CỐT LÕI
+==================================================
+
+API Client:
+→ Quản lý Axios/HTTP config.
+
+Service:
+→ Quản lý endpoint và API request.
+
+Type:
+→ Định nghĩa contract dữ liệu.
+
+Hook:
+→ Quản lý server state nếu cần.
+
+Component:
+→ Quản lý UI và tương tác người dùng.
+
+Tóm lại:
+
+Component
+   ↓
+Service
+   ↓
+apiClient
+   ↓
+Backend API
+
+Mỗi layer chỉ làm đúng một nhiệm vụ.

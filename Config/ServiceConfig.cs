@@ -1,8 +1,16 @@
-﻿using dotnet_backend_freshmart.Data;
+using dotnet_backend_freshmart.Data;
 using dotnet_backend_freshmart.Services;
 using dotnet_backend_freshmart.Services.CategoryService;
+using dotnet_backend_freshmart.Services.CustomerService;
 using dotnet_backend_freshmart.Services.EmployeeService;
+using dotnet_backend_freshmart.Services.InventoryService;
+using dotnet_backend_freshmart.Services.OrderService;
+using dotnet_backend_freshmart.Services.ProductService;
+using dotnet_backend_freshmart.Services.PurchaseOrderService;
+using dotnet_backend_freshmart.Services.ShiftService;
 using dotnet_backend_freshmart.Services.SupplierService;
+using dotnet_backend_freshmart.Services.NotificationService;
+using dotnet_backend_freshmart.Services.ReportService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,8 +27,17 @@ namespace dotnet_backend_freshmart.Config
         public static IServiceCollection AddDatabaseConfiguration(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
-                       .UseSnakeCaseNamingConvention());
+                options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"), npgsqlOptions =>
+                {
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorCodesToAdd: null
+                    );
+                    npgsqlOptions.CommandTimeout(60);
+                })
+                .UseSnakeCaseNamingConvention()
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning))); // Ignore warning when using raw SQL
             return services;
         }
         /// <summary>
@@ -34,6 +51,14 @@ namespace dotnet_backend_freshmart.Config
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<ISupplierService, SupplierService>();
+            services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<IShiftService, ShiftService>();
+            services.AddScoped<IOrderService, OrderService>();
+            services.AddScoped<ICustomerService, CustomerService>();
+            services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+            services.AddScoped<IInventoryService, InventoryService>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IReportService, ReportService>();
             return services;
         }
         /// <summary>

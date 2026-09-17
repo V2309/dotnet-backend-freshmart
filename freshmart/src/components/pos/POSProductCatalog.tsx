@@ -19,6 +19,8 @@ import { Product, OrderType } from '../../types';
 import { POSProductCard } from './POSProductCard';
 import { sound } from '../../utils/sound';
 
+import { useCategoryStore } from '../../stores/categoryStore';
+
 export type { OrderType };
 
 export interface POSCategoryData {
@@ -60,84 +62,40 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
   onOpenTransactionModal,
   searchInputRef,
 }) => {
+  const { categories: storeCategories, fetchCategories } = useCategoryStore();
   const VISIBLE_COUNT = 6;
   const [categoryStartIndex, setCategoryStartIndex] = React.useState<number>(0);
 
-  // Full rich categories list
+  React.useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // Dynamic categories list from DB + 'all'
   const categoriesList = useMemo<POSCategoryData[]>(() => {
-    return [
+    const list: POSCategoryData[] = [
       {
         id: 'all',
         name: 'Tất cả (All)',
         count: products.length,
         image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=120&auto=format&fit=crop&q=80',
         icon: LayoutGrid
-      },
-      {
-        id: 'Đồ uống',
-        name: 'Đồ uống',
-        count: products.filter(p => p.category === 'Đồ uống').length,
-        image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=120&auto=format&fit=crop&q=80',
-        icon: Coffee
-      },
-      {
-        id: 'Mì & Thực phẩm',
-        name: 'Mì & Ăn liền',
-        count: products.filter(p => p.category === 'Mì & Thực phẩm').length,
-        image: 'https://images.unsplash.com/photo-1612927601601-6638404737ce?w=120&auto=format&fit=crop&q=80',
-        icon: UtensilsCrossed
-      },
-      {
-        id: 'Bánh kẹo',
-        name: 'Bánh kẹo',
-        count: products.filter(p => p.category === 'Bánh kẹo').length,
-        image: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=120&auto=format&fit=crop&q=80',
-        icon: Cookie
-      },
-      {
-        id: 'Sữa & Bơ',
-        name: 'Sữa & Bơ',
-        count: products.filter(p => p.category === 'Sữa & Bơ').length,
-        image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80',
-        icon: Milk
-      },
-      {
-        id: 'Gia vị & Hóa phẩm',
-        name: 'Gia vị & Hóa',
-        count: products.filter(p => p.category === 'Gia vị & Hóa phẩm').length,
-        image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=120&auto=format&fit=crop&q=80',
-        icon: Sparkles
-      },
-      {
-        id: 'Đồ tươi sống',
-        name: 'Tươi sống',
-        count: products.filter(p => p.category === 'Đồ tươi sống').length,
-        image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=120&auto=format&fit=crop&q=80',
-        icon: Apple
-      },
-      {
-        id: 'Trái cây',
-        name: 'Trái cây tươi',
-        count: 24,
-        image: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=120&auto=format&fit=crop&q=80',
-        icon: Apple
-      },
-      {
-        id: 'Rau củ',
-        name: 'Rau củ sạch',
-        count: 32,
-        image: 'https://images.unsplash.com/photo-1597362070087-321245084976?w=120&auto=format&fit=crop&q=80',
-        icon: LayoutGrid
-      },
-      {
-        id: 'Đông lạnh',
-        name: 'Đông lạnh',
-        count: 18,
-        image: 'https://images.unsplash.com/photo-1517427294546-5aa121f68e8a?w=120&auto=format&fit=crop&q=80',
-        icon: Cookie
       }
     ];
-  }, [products]);
+
+    if (storeCategories && storeCategories.length > 0) {
+      storeCategories.forEach(cat => {
+        list.push({
+          id: cat.name,
+          name: cat.name,
+          count: products.filter(p => p.category === cat.name || p.category === cat.slug).length,
+          image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=120&auto=format&fit=crop&q=80',
+          icon: LayoutGrid
+        });
+      });
+    }
+
+    return list;
+  }, [products, storeCategories]);
 
   // Next / Prev step: shifts 1 item at a time (hiding 1 on left, showing 1 new on right)
   const canGoPrev = categoryStartIndex > 0;

@@ -15,8 +15,8 @@ import {
 } from './employees';
 
 interface EmployeesViewProps {
-  currentShift: CashierShift;
-  onCloseShift: () => void;
+  currentShift?: CashierShift;
+  onCloseShift?: () => void;
 }
 
 export const EmployeesView: React.FC<EmployeesViewProps> = ({
@@ -104,16 +104,18 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
       <EmployeeKpis
         totalStaff={totalStaff}
         activeStaffCount={activeStaffCount}
-        startingCash={currentShift.startingCash}
-        totalRevenue={currentShift.totalRevenue}
+        startingCash={currentShift?.startingCash ?? 0}
+        totalRevenue={currentShift?.totalRevenue ?? 0}
       />
 
-      {/* 3. Shift Status Banner */}
-      <ShiftStatusBanner
-        currentShift={currentShift}
-        cashierName={user?.name || currentShift.cashierName}
-        onCloseShift={onCloseShift}
-      />
+      {/* 3. Shift Status Banner (nếu có currentShift) */}
+      {currentShift && (
+        <ShiftStatusBanner
+          currentShift={currentShift}
+          cashierName={user?.name || currentShift.cashierName}
+          onCloseShift={onCloseShift || (() => {})}
+        />
+      )}
 
       {/* 4. Filter & Search Bar */}
       <EmployeeFilterBar

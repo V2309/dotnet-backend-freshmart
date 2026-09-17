@@ -43,6 +43,7 @@ export const DashboardLayout: React.FC = () => {
     'purchases',
     'customers',
     'reports',
+    'shifts',
     'employees',
   ].includes(pathSegment)
     ? pathSegment

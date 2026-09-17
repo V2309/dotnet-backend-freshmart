@@ -1,16 +1,9 @@
 import React from 'react';
 import { X, Play, Trash2, Clock, User, ShoppingBag, ArrowRight } from 'lucide-react';
-import { CartItem, Customer } from '../types';
+import { CartItem, Customer, HeldCartData } from '../types';
 import { formatCurrency } from '../utils/format';
 
-export interface HeldCartData {
-  id: string;
-  cart: CartItem[];
-  customer: Customer | null;
-  discount: number;
-  createdAt: string;
-  orderType: 'dine_in' | 'takeaway' | 'delivery';
-}
+export type { HeldCartData };
 
 interface HeldOrdersModalProps {
   isOpen: boolean;

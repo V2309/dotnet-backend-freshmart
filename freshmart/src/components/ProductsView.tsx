@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Plus, 
@@ -29,23 +29,66 @@ import { Product, StockStatus } from '../types';
 import { formatCurrency } from '../utils/format';
 import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
+import { useProductStore } from '../stores/productStore';
+import { useSupplierStore } from '../stores/supplierStore';
+import { useCategoryStore } from '../stores/categoryStore';
 
 interface ProductsViewProps {
-  products: Product[];
-  onAddProduct: (product: Omit<Product, 'id'>) => void;
-  onUpdateProduct: (product: Product) => void;
-  onAdjustStock: (productId: string, newStock: number) => void;
+  products?: Product[];
+  onAddProduct?: (product: Omit<Product, 'id'>) => void;
+  onUpdateProduct?: (product: Product) => void;
+  onAdjustStock?: (productId: string, newStock: number) => void;
 }
 
 type ViewLayout = 'table' | 'grid';
 type SortOption = 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc';
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
-  products,
+  products: propProducts,
   onAddProduct,
   onUpdateProduct,
   onAdjustStock
 }) => {
+  // Load real products, suppliers, and categories from Stores (Database)
+  const { 
+    products: storeProducts, 
+    isLoading: isProductLoading, 
+    fetchProducts, 
+    createProduct, 
+    updateProduct, 
+    quickAdjustStock 
+  } = useProductStore();
+  const { suppliers, fetchSuppliers } = useSupplierStore();
+  const { categories, fetchCategories } = useCategoryStore();
+
+  useEffect(() => {
+    fetchProducts(undefined, true);
+    fetchSuppliers();
+    fetchCategories();
+  }, [fetchProducts, fetchSuppliers, fetchCategories]);
+
+  // Derived products from DB Store or props
+  const products: Product[] = useMemo(() => {
+    if (storeProducts && storeProducts.length > 0) {
+      return storeProducts.map(p => ({
+        id: p.id,
+        sku: p.sku,
+        barcode: p.barcode || '',
+        name: p.name,
+        category: p.categoryName || 'Khác',
+        unit: p.unit,
+        costPrice: p.costPrice,
+        sellPrice: p.sellPrice,
+        stock: p.stock,
+        minStock: p.minStock,
+        image: p.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80',
+        status: (p.stock <= 0 ? 'out_of_stock' : p.stock <= p.minStock ? 'low_stock' : 'in_stock') as StockStatus,
+        supplier: p.supplierName || 'Chưa gán',
+      }));
+    }
+    return propProducts || [];
+  }, [storeProducts, propProducts]);
+
   // Filters & State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -70,7 +113,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [newProdSell, setNewProdSell] = useState(15000);
   const [newProdStock, setNewProdStock] = useState(50);
   const [newProdMinStock, setNewProdMinStock] = useState(20);
-  const [newProdSupplier, setNewProdSupplier] = useState('Công ty phân phối');
+  const [newProdSupplier, setNewProdSupplier] = useState('');
   const [newProdImage, setNewProdImage] = useState('https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80');
 
   // Copy helper
@@ -172,45 +215,109 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingProduct) return;
+    const targetCategory = categories.find(c => c.name === editingProduct.category || c.id === editingProduct.category) || categories[0];
+    const targetSupplier = suppliers.find(s => s.name === editingProduct.supplier || s.id === editingProduct.supplier);
+
     sound.playSuccessChime();
-    onUpdateProduct(editingProduct);
+    if (onUpdateProduct) {
+      onUpdateProduct(editingProduct);
+    }
+    try {
+      if (targetCategory) {
+        await updateProduct(editingProduct.id, {
+          sku: editingProduct.sku,
+          barcode: editingProduct.barcode || null,
+          name: editingProduct.name,
+          categoryId: targetCategory.id,
+          supplierId: targetSupplier?.id || null,
+          unit: editingProduct.unit,
+          costPrice: Number(editingProduct.costPrice),
+          sellPrice: Number(editingProduct.sellPrice),
+          stock: Number(editingProduct.stock),
+          minStock: Number(editingProduct.minStock),
+          imageUrl: editingProduct.image || null,
+          isActive: true,
+        });
+      }
+    } catch (err: any) {
+      console.error('Error updating product in DB:', err);
+    }
     setEditingProduct(null);
   };
 
-  const handleQuickAdjustStock = (newStock: number) => {
+  const handleQuickAdjustStock = async (newStock: number) => {
     if (!quickStockProduct) return;
+    const stockVal = Math.max(0, newStock);
     sound.playPop();
-    onAdjustStock(quickStockProduct.id, Math.max(0, newStock));
+    if (onAdjustStock) {
+      onAdjustStock(quickStockProduct.id, stockVal);
+    }
+    try {
+      await quickAdjustStock(quickStockProduct.id, { stock: stockVal });
+    } catch (err: any) {
+      console.error('Error adjusting stock in DB:', err);
+    }
     setQuickStockProduct(null);
   };
 
-  const handleCreateProduct = (e: React.FormEvent) => {
+  const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProdName.trim()) return;
+    if (!newProdName.trim()) {
+      alert('Vui lòng nhập tên mặt hàng');
+      return;
+    }
 
-    sound.playSuccessChime();
-    onAddProduct({
-      sku: newProdSku || `SP-${Math.floor(100 + Math.random() * 900)}`,
-      barcode: newProdBarcode || `893${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-      name: newProdName,
-      category: newProdCategory,
-      unit: newProdUnit,
-      costPrice: Number(newProdCost),
-      sellPrice: Number(newProdSell),
-      stock: Number(newProdStock),
-      minStock: Number(newProdMinStock),
-      image: newProdImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80',
-      status: Number(newProdStock) <= 0 ? 'out_of_stock' : Number(newProdStock) <= Number(newProdMinStock) ? 'low_stock' : 'in_stock',
-      supplier: newProdSupplier
-    });
+    const targetCategory = categories.find(c => c.name === newProdCategory || c.id === newProdCategory) || categories[0];
+    const targetSupplier = suppliers.find(s => s.name === newProdSupplier || s.id === newProdSupplier);
 
-    setIsAddModalOpen(false);
-    // Reset form
-    setNewProdName('');
-    setNewProdSku('');
-    setNewProdBarcode('');
+    if (!targetCategory) {
+      alert('Vui lòng chọn nhóm hàng trước khi tạo');
+      return;
+    }
+
+    try {
+      sound.playSuccessChime();
+      await createProduct({
+        sku: newProdSku || `SP-${Math.floor(100 + Math.random() * 900)}`,
+        barcode: newProdBarcode || `893${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+        name: newProdName.trim(),
+        categoryId: targetCategory.id,
+        supplierId: targetSupplier?.id || null,
+        unit: newProdUnit || 'Cai',
+        costPrice: Number(newProdCost) || 0,
+        sellPrice: Number(newProdSell) || 0,
+        stock: Number(newProdStock) || 0,
+        minStock: Number(newProdMinStock) || 0,
+        imageUrl: newProdImage || null,
+      });
+
+      if (onAddProduct) {
+        onAddProduct({
+          sku: newProdSku || `SP-${Math.floor(100 + Math.random() * 900)}`,
+          barcode: newProdBarcode || `893${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+          name: newProdName.trim(),
+          category: targetCategory.name,
+          unit: newProdUnit,
+          costPrice: Number(newProdCost),
+          sellPrice: Number(newProdSell),
+          stock: Number(newProdStock),
+          minStock: Number(newProdMinStock),
+          image: newProdImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80',
+          status: Number(newProdStock) <= 0 ? 'out_of_stock' : Number(newProdStock) <= Number(newProdMinStock) ? 'low_stock' : 'in_stock',
+          supplier: targetSupplier?.name || newProdSupplier
+        });
+      }
+
+      // Đóng modal và reset form khi tạo thành công
+      setIsAddModalOpen(false);
+      setNewProdName('');
+      setNewProdSku('');
+      setNewProdBarcode('');
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi tạo sản phẩm vào Database');
+    }
   };
 
   // Generate SKU helper
@@ -433,6 +540,20 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button 
+            onClick={() => {
+              sound.playPop();
+              fetchProducts(undefined, true);
+              fetchSuppliers(undefined, true);
+              fetchCategories(undefined, true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+            title="Tải lại dữ liệu từ máy chủ"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#646B72] ${isProductLoading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+
           <button 
             onClick={() => {
               sound.playPop();
@@ -969,8 +1090,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
                     className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] bg-white focus:border-[#FE9F43]"
                   >
-                    {uniqueCategories.map(c => (
-                      <option key={c} value={c}>{c}</option>
+                    <option value="">-- Chọn Nhóm hàng --</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1049,6 +1171,22 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
               </div>
 
               <div>
+                <label className="block font-bold text-[#212B36] mb-1">Nhà cung cấp / Đối tác</label>
+                <select
+                  value={editingProduct.supplier || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, supplier: e.target.value })}
+                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] bg-white focus:border-[#FE9F43]"
+                >
+                  <option value="">-- Chọn Nhà cung cấp --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.name} ({s.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block font-bold text-[#212B36] mb-1">URL Hình ảnh</label>
                 <input
                   type="text"
@@ -1121,12 +1259,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     onChange={(e) => setNewProdCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] bg-white focus:border-[#FE9F43]"
                   >
-                    <option value="Đồ uống">Đồ uống</option>
-                    <option value="Mì & Thực phẩm">Mì & Thực phẩm</option>
-                    <option value="Bánh kẹo">Bánh kẹo</option>
-                    <option value="Sữa & Bơ">Sữa & Bơ</option>
-                    <option value="Gia vị & Hóa phẩm">Gia vị & Hóa phẩm</option>
-                    <option value="Đồ tươi sống">Đồ tươi sống</option>
+                    <option value="">-- Chọn Nhóm hàng --</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1226,19 +1362,24 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
               <div>
                 <label className="block font-bold text-[#212B36] mb-1">Nhà cung cấp / Đối tác</label>
-                <input
-                  type="text"
+                <select
                   value={newProdSupplier}
                   onChange={(e) => setNewProdSupplier(e.target.value)}
-                  placeholder="Công ty TNHH Phân Phối Thực Phẩm"
-                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36]"
-                />
+                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] bg-white focus:border-[#FE9F43]"
+                >
+                  <option value="">-- Chọn Nhà cung cấp --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.name} ({s.code})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="px-5 py-4 border-t border-[#EAEAEA] bg-[#F8FAFC] flex justify-end gap-2">
               <button
-                type="button"
+                type="button" 
                 onClick={() => setIsAddModalOpen(false)}
                 className="px-4 py-2 text-xs font-bold text-[#646B72] hover:bg-slate-200 rounded-xl transition cursor-pointer"
               >

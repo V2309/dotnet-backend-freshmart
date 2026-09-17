@@ -19,25 +19,70 @@ Exceptions/    -> AppException, NotFoundException, ConflictException...
 Middleware/    -> ExceptionHandlingMiddleware (global error handler)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REST ROUTES
+REST ROUTES (STATUS)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-GET    /api/v1/products              -> Get all
-GET    /api/v1/products/{id}         -> Get by id
-POST   /api/v1/products              -> Create      (201 Created)
-PUT    /api/v1/products/{id}         -> Update full (200 OK)
-DELETE /api/v1/products/{id}         -> Delete      (204 NoContent)
+[✅] GET    /api/v1/products              -> [Đã làm]
+[✅] GET    /api/v1/products/{id}         -> [Đã làm]
+[✅] GET    /api/v1/products/barcode/{code} -> [Đã làm]
+[✅] POST   /api/v1/products              -> [Đã làm]
+[✅] PUT    /api/v1/products/{id}         -> [Đã làm]
+[✅] PATCH  /api/v1/products/{id}/quick-stock -> [Đã làm]
+[✅] PATCH  /api/v1/products/{id}/status  -> [Đã làm]
+[✅] DELETE /api/v1/products/{id}         -> [Đã làm]
 
-GET    /api/v1/employees
-GET    /api/v1/employees/{id}
-POST   /api/v1/employees
-PUT    /api/v1/employees/{id}
-DELETE /api/v1/employees/{id}
+[✅] GET    /api/v1/employees             -> [Đã làm]
+[✅] GET    /api/v1/employees/{id}         -> [Đã làm]
+[✅] POST   /api/v1/employees             -> [Đã làm]
+[✅] PUT    /api/v1/employees/{id}         -> [Đã làm]
+[✅] PATCH  /api/v1/employees/{id}/status  -> [Đã làm]
+[✅] PATCH  /api/v1/employees/{id}/reset-pin -> [Đã làm]
+[✅] DELETE /api/v1/employees/{id}         -> [Đã làm]
 
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login
-POST   /api/v1/auth/login-pin
-GET    /api/v1/auth/me
-POST   /api/v1/auth/logout
+[✅] POST   /api/v1/auth/register         -> [Đã làm]
+[✅] POST   /api/v1/auth/login            -> [Đã làm]
+[✅] POST   /api/v1/auth/login-pin        -> [Đã làm]
+[✅] GET    /api/v1/auth/me               -> [Đã làm]
+[✅] POST   /api/v1/auth/logout           -> [Đã làm]
+
+[✅] GET    /api/v1/categories            -> [Đã làm]
+[✅] GET    /api/v1/categories/{id}        -> [Đã làm]
+[✅] POST   /api/v1/categories            -> [Đã làm]
+[✅] PUT    /api/v1/categories/{id}        -> [Đã làm]
+[✅] DELETE /api/v1/categories/{id}        -> [Đã làm]
+
+[✅] GET    /api/v1/suppliers             -> [Đã làm]
+[✅] GET    /api/v1/suppliers/{id}         -> [Đã làm]
+[✅] POST   /api/v1/suppliers             -> [Đã làm]
+[✅] PUT    /api/v1/suppliers/{id}         -> [Đã làm]
+[✅] PATCH  /api/v1/suppliers/{id}/status  -> [Đã làm]
+[✅] DELETE /api/v1/suppliers/{id}         -> [Đã làm]
+
+[✅] GET    /api/v1/customers             -> [Đã làm]
+[✅] GET    /api/v1/customers/{id}         -> [Đã làm]
+[✅] GET    /api/v1/customers/search-pos  -> [Đã làm]
+[✅] POST   /api/v1/customers             -> [Đã làm]
+[✅] PUT    /api/v1/customers/{id}         -> [Đã làm]
+[✅] PATCH  /api/v1/customers/{id}/status  -> [Đã làm]
+[✅] DELETE /api/v1/customers/{id}         -> [Đã làm]
+
+[✅] POST   /api/v1/pos/checkout          -> [Đã làm]
+[✅] GET    /api/v1/pos/vietqr            -> [Đã làm]
+[✅] GET    /api/v1/orders                -> [Đã làm]
+[✅] GET    /api/v1/orders/{id}           -> [Đã làm]
+[✅] GET    /api/v1/orders/code/{code}    -> [Đã làm]
+[✅] POST   /api/v1/orders/{id}/cancel    -> [Đã làm]
+ 
+[✅] GET    /api/v1/notifications         -> [Đã làm]
+[✅] GET    /api/v1/notifications/unread-count -> [Đã làm]
+[✅] POST   /api/v1/notifications         -> [Đã làm]
+[✅] PATCH  /api/v1/notifications/{id}/read -> [Đã làm]
+[✅] PATCH  /api/v1/notifications/read-all -> [Đã làm]
+[✅] DELETE /api/v1/notifications/{id}     -> [Đã làm]
+
+[✅] GET    /api/v1/reports/summary       -> [Đã làm]
+[✅] GET    /api/v1/reports/payment-share -> [Đã làm]
+[✅] GET    /api/v1/reports/revenue-trend -> [Đã làm]
+[✅] GET    /api/v1/reports/daily-comparison -> [Đã làm]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 NAMING

@@ -1,41 +1,58 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Phone, Award, Check } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 import { Customer } from '../types';
+import { customerService } from '../services/customer.service';
 
 interface QuickAddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCustomerAdded: (newCustomer: Omit<Customer, 'id'>) => void;
+  onCustomerAdded: (newCustomer: Customer) => void;
+  initialPhone?: string;
 }
 
 export const QuickAddCustomerModal: React.FC<QuickAddCustomerModalProps> = ({
   isOpen,
   onClose,
-  onCustomerAdded
+  onCustomerAdded,
+  initialPhone = ''
 }) => {
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [tier, setTier] = useState<Customer['tier']>('Thân thiết');
+  const [phone, setPhone] = useState(initialPhone);
+  const [gender, setGender] = useState<string>('Nữ');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setPhone(initialPhone);
+    }
+  }, [isOpen, initialPhone]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    onCustomerAdded({
-      code: 'KH-' + Math.floor(100 + Math.random() * 900),
-      name: name.trim(),
-      phone: phone.trim() || '09' + Math.floor(10000000 + Math.random() * 90000000),
-      points: 50, // Welcome points
-      totalSpent: 0,
-      tier,
-      lastVisit: new Date().toISOString().split('T')[0]
-    });
+    try {
+      setIsSubmitting(true);
+      const created = await customerService.create({
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        gender,
+        initialPoints: 50,
+      });
 
-    setName('');
-    setPhone('');
-    onClose();
+      onCustomerAdded(created as Customer);
+      setName('');
+      setPhone('');
+      setGender('Nữ');
+      onClose();
+    } catch (error) {
+      console.error('Lỗi thêm khách hàng tại POS:', error);
+      alert('Không thể tạo khách hàng. Vui lòng kiểm tra lại số điện thoại trùng lặp!');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,17 +105,21 @@ export const QuickAddCustomerModal: React.FC<QuickAddCustomerModalProps> = ({
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Hạng thành viên ban đầu</label>
+            <label className="block font-bold text-slate-700 mb-1">Giới tính</label>
             <select
-              value={tier}
-              onChange={(e) => setTier(e.target.value as Customer['tier'])}
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
               className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-1 focus:ring-primary-500 focus:border-primary-500 focus:outline-none"
             >
-              <option value="Thân thiết">Thân thiết (Tặng ngay 50 điểm)</option>
-              <option value="Bạc">Hạng Bạc</option>
-              <option value="Vàng">Hạng Vàng (VIP)</option>
-              <option value="Kim Cương">Hạng Kim Cương (VVIP)</option>
+              <option value="Nữ">Nữ</option>
+              <option value="Nam">Nam</option>
+              <option value="Khác">Khác</option>
             </select>
+          </div>
+
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-emerald-800">
+            <span className="font-medium">Ưu đãi chào mừng:</span>
+            <span className="font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-lg text-[11px]">+50 điểm</span>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2">

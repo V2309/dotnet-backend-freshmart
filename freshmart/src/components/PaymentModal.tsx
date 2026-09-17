@@ -16,6 +16,8 @@ import {
 import { CartItem, Customer, PaymentMethod, Order } from '../types';
 import { formatCurrency } from '../utils/format';
 import { sound } from '../utils/sound';
+import { useOrderStore } from '../stores/orderStore';
+import { useShiftStore } from '../stores/shiftStore';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -42,18 +44,24 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onCompleteOrder,
   cashierName
 }) => {
+  const { checkout } = useOrderStore();
+  const { currentShift, fetchCurrentShift } = useShiftStore();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState<number>(total);
   const [orderNote, setOrderNote] = useState<string>('');
   const [vietQrConfirmed, setVietQrConfirmed] = useState<boolean>(false);
   const [posCardConfirmed, setPosCardConfirmed] = useState<boolean>(false);
 
-  // Sync default amountReceived with total whenever total changes
+  // Sync default amountReceived with total whenever total changes & load current shift
   useEffect(() => {
     setAmountReceived(total);
     setVietQrConfirmed(false);
     setPosCardConfirmed(false);
-  }, [total, isOpen]);
+    if (isOpen) {
+      fetchCurrentShift();
+    }
+  }, [total, isOpen, fetchCurrentShift]);
 
   // Keyboard shortcut: Enter to confirm if valid
   useEffect(() => {
@@ -85,40 +93,75 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return list.filter(item => item.value >= total || item.value === total || item.value >= 200000);
   }, [total]);
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (isCashInsufficient) return;
 
-    sound.playSuccessChime();
+    try {
+      setIsSubmitting(true);
+      sound.playSuccessChime();
 
-    const orderId = 'ord-' + Math.floor(1000 + Math.random() * 9000);
-    const orderCode = 'HD' + Math.floor(1050 + Math.random() * 8900);
+      const isValidGuid = (id?: string) => !!id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
+      const backendPaymentMethod = method === 'cash' ? 'Cash' : method === 'transfer' ? 'VietQR' : 'PosCard';
 
-    const completedOrder: Order = {
-      id: orderId,
-      code: orderCode,
-      createdAt: new Date().toISOString(),
-      customerName: customer ? customer.name : 'Khách lẻ vãng lai',
-      customerPhone: customer?.phone,
-      cashierName: cashierName,
-      items: cart.map(item => ({
-        productId: item.product.id,
-        productName: item.product.name,
-        sku: item.product.sku,
-        quantity: item.quantity,
-        unitPrice: item.product.sellPrice,
-        total: item.product.sellPrice * item.quantity
-      })),
-      subtotal,
-      discount: discountAmount,
-      vat: vatAmount,
-      total,
-      paymentMethod: method,
-      amountReceived: method === 'cash' ? amountReceived : total,
-      change: method === 'cash' ? changeAmount : 0,
-      status: 'completed'
-    };
+      const createdOrder = await checkout({
+        shiftId: isValidGuid(currentShift?.id) ? currentShift?.id : undefined,
+        customerId: isValidGuid(customer?.id) ? customer?.id : undefined,
+        customerName: customer ? customer.name : 'Khách lẻ vãng lai',
+        customerPhone: customer?.phone,
+        cashierName: cashierName,
+        items: cart.map(item => ({
+          productId: item.product.id,
+          productName: item.product.name,
+          sku: item.product.sku,
+          quantity: item.quantity,
+          unitPrice: item.product.sellPrice,
+          discountPercent: item.discountPercent || 0,
+          lineTotal: (item.product.sellPrice * item.quantity) * (1 - (item.discountPercent || 0) / 100)
+        })),
+        subtotal,
+        discountAmount,
+        vatAmount,
+        total,
+        paymentMethod: backendPaymentMethod,
+        amountReceived: method === 'cash' ? amountReceived : total,
+        changeAmount: method === 'cash' ? changeAmount : 0,
+        note: orderNote.trim() || undefined
+      });
 
-    onCompleteOrder(completedOrder);
+      // Reload shift metrics in background
+      fetchCurrentShift();
+
+      const completedOrder: Order = {
+        id: createdOrder.id,
+        code: createdOrder.code,
+        createdAt: createdOrder.createdAt,
+        customerName: createdOrder.customerName,
+        customerPhone: createdOrder.customerPhone || undefined,
+        cashierName: createdOrder.cashierName,
+        items: createdOrder.items.map(i => ({
+          productId: i.productId,
+          productName: i.productName,
+          sku: i.sku,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          total: i.lineTotal
+        })),
+        subtotal: createdOrder.subtotal,
+        discount: createdOrder.discountAmount,
+        vat: createdOrder.vatAmount,
+        total: createdOrder.total,
+        paymentMethod: method,
+        amountReceived: createdOrder.amountReceived,
+        change: createdOrder.changeAmount,
+        status: 'completed'
+      };
+
+      onCompleteOrder(completedOrder);
+    } catch (err: any) {
+      alert(err.message || 'Thanh toán đơn hàng thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -295,7 +338,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
               <div className="w-36 h-36 bg-white border border-slate-300 rounded-xl p-2 shadow-xs shrink-0 flex flex-col items-center justify-center">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=FreshMart_POS_${total}_HD1049`}
+                  src={`https://img.vietqr.io/image/MB-0988888888-compact2.png?amount=${Math.max(0, total)}&addInfo=THANH%20TOAN%20FRESHMART&accountName=SIEU%20THI%20FRESHMART`}
                   alt="VietQR code"
                   className="w-full h-full object-contain"
                 />
@@ -310,8 +353,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   Khách mở ứng dụng ngân hàng (Vietcombank, BIDV, Techcombank, MB...) hoặc MoMo quét mã trên.
                 </p>
                 <div className="bg-white p-2 border border-slate-200 rounded-lg space-y-1 font-mono text-[11px]">
-                  <p><span className="text-slate-400">STK:</span> 19036789999 (Techcombank)</p>
-                  <p><span className="text-slate-400">Chủ TK:</span> FRESHMART VIETNAM</p>
+                  <p><span className="text-slate-400">STK:</span> 0988888888 (MBBank)</p>
+                  <p><span className="text-slate-400">Chủ TK:</span> SIEU THI FRESHMART</p>
                   <p><span className="text-slate-400">Số tiền:</span> <b className="text-primary-700">{formatCurrency(total)}</b></p>
                 </div>
 
@@ -323,19 +366,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
                   />
                   <span className="font-semibold text-slate-800">
-                    Đã nhận được thông báo biến động số dư (+{formatCurrency(total)})
+                    Khách đã quét mã & chuyển khoản thành công
                   </span>
                 </label>
               </div>
             </div>
           )}
 
-          {/* METHOD 3: CARD / POS TERMINAL */}
+          {/* METHOD 3: POS CARD */}
           {method === 'card' && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 text-xs">
-              <div className="flex items-center gap-2 text-slate-900 font-bold">
-                <CreditCard className="w-4 h-4 text-primary-600" />
-                <span>Thanh toán qua máy POS quẹt thẻ ngân hàng</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2">
+              <div className="flex items-center gap-2 text-primary-700 font-bold">
+                <CreditCard className="w-4 h-4" />
+                <span>Thanh toán Thẻ qua máy POS Cầm tay (Contactless / Chip EMV)</span>
               </div>
               <p className="text-slate-600 leading-relaxed">
                 1. Đưa thẻ của khách vào khe đọc chip hoặc chạm contactless trên máy POS ngân hàng.<br />
@@ -376,20 +419,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition"
+            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-xl transition disabled:opacity-50"
           >
             Quay lại
           </button>
 
           <button
             type="button"
-            disabled={isCashInsufficient}
+            disabled={isCashInsufficient || isSubmitting}
             onClick={handleFinish}
             className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 active:bg-primary-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Xác nhận & In hóa đơn</span>
+            <span>{isSubmitting ? 'Đang xử lý...' : 'Xác nhận & In hóa đơn'}</span>
           </button>
         </div>
       </div>

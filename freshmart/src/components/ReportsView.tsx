@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ResponsiveContainer,
   AreaChart,
@@ -35,6 +35,13 @@ import { Order } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
+import { reportService } from '../services/report.service';
+import type { 
+  ReportSummary, 
+  PaymentShareItem, 
+  HourlyRevenueTrend, 
+  DailyRevenueComparison 
+} from '../types/report';
 
 interface ReportsViewProps {
   orders: Order[];
@@ -44,6 +51,48 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
   const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Real backend report data state
+  const [summary, setSummary] = useState<ReportSummary | null>(null);
+  const [paymentItems, setPaymentItems] = useState<PaymentShareItem[]>([]);
+  const [revenueTrend, setRevenueTrend] = useState<HourlyRevenueTrend[]>([]);
+  const [dailyComparison, setDailyComparison] = useState<DailyRevenueComparison[]>([]);
+
+  useEffect(() => {
+    // 1. Fetch KPI summary
+    reportService.getSummary(timeframe)
+      .then((res) => {
+        if (res) setSummary(res);
+      })
+      .catch((err) => console.warn('API Report Summary fallback:', err));
+
+    // 2. Fetch Payment share
+    reportService.getPaymentShare(timeframe)
+      .then((res) => {
+        if (res && res.items && res.items.length > 0) {
+          setPaymentItems(res.items);
+        }
+      })
+      .catch((err) => console.warn('API Report Payment Share fallback:', err));
+
+    // 3. Fetch Revenue trend
+    reportService.getRevenueTrend(timeframe === 'day' ? 'day' : timeframe)
+      .then((res) => {
+        if (res && res.length > 0) {
+          setRevenueTrend(res);
+        }
+      })
+      .catch((err) => console.warn('API Report Trend fallback:', err));
+
+    // 4. Fetch Daily comparison
+    reportService.getDailyComparison('week')
+      .then((res) => {
+        if (res && res.length > 0) {
+          setDailyComparison(res);
+        }
+      })
+      .catch((err) => console.warn('API Daily Comparison fallback:', err));
+  }, [timeframe]);
+
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
     sound.playPop();
@@ -51,47 +100,50 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
     setTimeout(() => setCopiedId(null), 1500);
   };
 
-  const totalRevenue = useMemo(() => orders.reduce((sum, o) => sum + o.total, 0), [orders]);
-  const totalVAT = useMemo(() => orders.reduce((sum, o) => sum + o.vat, 0), [orders]);
-  const totalDiscount = useMemo(() => orders.reduce((sum, o) => sum + o.discount, 0), [orders]);
+  const totalRevenue = summary ? summary.totalRevenue : orders.reduce((sum, o) => sum + o.total, 0);
+  const totalVAT = summary ? summary.totalVAT : orders.reduce((sum, o) => sum + o.vat, 0);
+  const totalDiscount = summary ? summary.totalDiscount : orders.reduce((sum, o) => sum + o.discount, 0);
 
-  const cashOrders = useMemo(() => orders.filter(o => o.paymentMethod === 'cash'), [orders]);
-  const qrOrders = useMemo(() => orders.filter(o => o.paymentMethod === 'vietqr'), [orders]);
-  const posOrders = useMemo(() => orders.filter(o => o.paymentMethod === 'pos_card'), [orders]);
+  const normalizePayment = (method?: string) => {
+    const m = (method || '').toString().toLowerCase().replace(/[^a-z]/g, '');
+    if (m.includes('vietqr') || m.includes('qr')) return 'vietqr';
+    if (m.includes('pos') || m.includes('card')) return 'pos_card';
+    return 'cash';
+  };
 
-  const cashTotal = useMemo(() => cashOrders.reduce((s, o) => s + o.total, 0), [cashOrders]);
-  const qrTotal = useMemo(() => qrOrders.reduce((s, o) => s + o.total, 0), [qrOrders]);
-  const posTotal = useMemo(() => posOrders.reduce((s, o) => s + o.total, 0), [posOrders]);
+  const cashOrders = useMemo(() => orders.filter(o => normalizePayment(o.paymentMethod) === 'cash'), [orders]);
+  const qrOrders = useMemo(() => orders.filter(o => normalizePayment(o.paymentMethod) === 'vietqr'), [orders]);
+  const posOrders = useMemo(() => orders.filter(o => normalizePayment(o.paymentMethod) === 'pos_card'), [orders]);
+
+  const cashItem = paymentItems.find(i => i.name.toLowerCase().includes('tiền mặt'));
+  const qrItem = paymentItems.find(i => i.name.toLowerCase().includes('vietqr'));
+  const posItem = paymentItems.find(i => i.name.toLowerCase().includes('thẻ') || i.name.toLowerCase().includes('pos'));
+
+  const cashTotal = cashItem ? cashItem.value : cashOrders.reduce((s, o) => s + o.total, 0);
+  const qrTotal = qrItem ? qrItem.value : qrOrders.reduce((s, o) => s + o.total, 0);
+  const posTotal = posItem ? posItem.value : posOrders.reduce((s, o) => s + o.total, 0);
 
   // Payment method data for Recharts Pie
-  const paymentPieData = useMemo(() => [
-    { name: 'VietQR Chuyển khoản', value: qrTotal || 22800000, count: qrOrders.length || 24, color: '#2E6FF2' },
-    { name: 'Tiền mặt tại quầy', value: cashTotal || 18450000, count: cashOrders.length || 18, color: '#00A389' },
-    { name: 'Quẹt thẻ POS', value: posTotal || 7738000, count: posOrders.length || 8, color: '#FE9F43' },
-  ], [qrTotal, cashTotal, posTotal, qrOrders, cashOrders, posOrders]);
+  const paymentPieData = useMemo(() => {
+    if (paymentItems.length > 0) {
+      return paymentItems;
+    }
+    return [
+      { name: 'VietQR Chuyển khoản', value: qrTotal, count: qrOrders.length, color: '#2E6FF2' },
+      { name: 'Tiền mặt tại quầy', value: cashTotal, count: cashOrders.length, color: '#00A389' },
+      { name: 'Quẹt thẻ POS', value: posTotal, count: posOrders.length, color: '#FE9F43' },
+    ];
+  }, [paymentItems, qrTotal, cashTotal, posTotal, qrOrders, cashOrders, posOrders]);
 
   // Revenue trend timeline data for Recharts AreaChart
-  const revenueTrendData = useMemo(() => [
-    { time: '08:00', revenue: 1200000, orders: 4, vat: 96000 },
-    { time: '10:00', revenue: 3800000, orders: 11, vat: 304000 },
-    { time: '12:00', revenue: 8500000, orders: 26, vat: 680000 },
-    { time: '14:00', revenue: 4900000, orders: 15, vat: 392000 },
-    { time: '16:00', revenue: 7200000, orders: 22, vat: 576000 },
-    { time: '18:00', revenue: 12400000, orders: 38, vat: 992000 },
-    { time: '20:00', revenue: 9100000, orders: 29, vat: 728000 },
-    { time: '22:00', revenue: 3100000, orders: 9, vat: 248000 },
-  ], []);
+  const revenueTrendData = useMemo(() => {
+    return revenueTrend;
+  }, [revenueTrend]);
 
   // Daily revenue bar data
-  const dailyBarData = useMemo(() => [
-    { day: 'Thứ 2', revenue: 14200000, target: 12000000 },
-    { day: 'Thứ 3', revenue: 18500000, target: 15000000 },
-    { day: 'Thứ 4', revenue: 16800000, target: 15000000 },
-    { day: 'Thứ 5', revenue: 21400000, target: 18000000 },
-    { day: 'Thứ 6', revenue: 26900000, target: 20000000 },
-    { day: 'Thứ 7', revenue: 34500000, target: 25000000 },
-    { day: 'Chủ nhật', revenue: 38200000, target: 28000000 },
-  ], []);
+  const dailyBarData = useMemo(() => {
+    return dailyComparison;
+  }, [dailyComparison]);
 
   const CustomChartTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -161,14 +213,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
       header: 'Phương thức',
       align: 'center',
       render: (o) => {
-        if (o.paymentMethod === 'vietqr') {
+        const pMethod = normalizePayment(o.paymentMethod);
+        if (pMethod === 'vietqr') {
           return (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#EAF8FF] text-[#2E6FF2] border border-[#2E6FF2]/20">
               <QrCode className="w-3 h-3" /> VietQR
             </span>
           );
         }
-        if (o.paymentMethod === 'pos_card') {
+        if (pMethod === 'pos_card') {
           return (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#FFF5E9] text-[#FE9F43] border border-[#FE9F43]/20">
               <CreditCard className="w-3 h-3" /> Thẻ POS
@@ -246,11 +299,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
             </div>
           </div>
           <h3 className="text-2xl font-black text-[#212B36] mt-2 tabular-nums">
-            {formatCurrency(totalRevenue > 0 ? totalRevenue : 48988078)}
+            {formatCurrency(totalRevenue)}
           </h3>
           <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-[#00A389]">
             <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>+{orders.length || 36} đơn hoàn tất</span>
+            <span>+{summary?.orderCount ?? orders.length} đơn hoàn tất</span>
           </div>
         </div>
 
@@ -263,10 +316,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
             </div>
           </div>
           <h3 className="text-2xl font-black text-[#00A389] mt-2 tabular-nums">
-            {formatCurrency(cashTotal > 0 ? cashTotal : 18450000)}
+            {formatCurrency(cashTotal)}
           </h3>
           <span className="text-[11px] text-[#646B72] font-medium mt-2 block">
-            {cashOrders.length || 18} giao dịch tiền mặt
+            {paymentItems.find(i => i.name.includes('Tiền mặt'))?.count ?? cashOrders.length} giao dịch tiền mặt
           </span>
         </div>
 
@@ -279,10 +332,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
             </div>
           </div>
           <h3 className="text-2xl font-black text-[#2E6FF2] mt-2 tabular-nums">
-            {formatCurrency(qrTotal > 0 ? qrTotal : 22800000)}
+            {formatCurrency(qrTotal)}
           </h3>
           <span className="text-[11px] text-[#646B72] font-medium mt-2 block">
-            {qrOrders.length || 24} quét mã QR tự động
+            {paymentItems.find(i => i.name.includes('VietQR'))?.count ?? qrOrders.length} quét mã QR tự động
           </span>
         </div>
 
@@ -295,7 +348,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
             </div>
           </div>
           <h3 className="text-2xl font-black text-[#7367F0] mt-2 tabular-nums">
-            {formatCurrency(totalVAT > 0 ? totalVAT : 3919000)}
+            {formatCurrency(totalVAT)}
           </h3>
           <span className="text-[11px] text-[#646B72] font-medium mt-2 block">
             Khấu trừ báo cáo thuế điện tử
@@ -486,21 +539,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
         </div>
       </div>
 
-      {/* 5. Recent Transaction Invoices with DataTable */}
+      {/* 5. Recent Transaction Invoices with DataTable (10 newest transactions) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-[#212B36] uppercase tracking-tight">
-            Nhật ký giao dịch hóa đơn gần đây
+            Nhật ký 10 giao dịch hóa đơn mới nhất
           </h3>
-          <span className="text-xs text-[#646B72] font-semibold">{orders.length} hóa đơn</span>
+          <span className="text-xs text-[#646B72] font-semibold">{Math.min(orders.length, 10)} hóa đơn gần đây</span>
         </div>
 
         <DataTable<Order>
-          data={orders}
+          data={[...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10)}
           columns={orderColumns}
           keyExtractor={(o) => o.id}
-          pagination
-          pageSize={10}
           emptyMessage="Chưa có hóa đơn bán hàng nào"
           emptySubMessage="Các đơn thanh toán từ POS sẽ tự động hiển thị tại đây"
         />

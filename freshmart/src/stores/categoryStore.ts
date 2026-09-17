@@ -18,7 +18,7 @@ interface CategoryState {
   includeInactive: boolean;
 
   // Actions
-  fetchCategories: (includeInactive?: boolean) => Promise<void>;
+  fetchCategories: (includeInactive?: boolean, force?: boolean) => Promise<void>;
   createCategory: (data: CreateCategoryRequest) => Promise<Category>;
   updateCategory: (id: string, data: UpdateCategoryRequest) => Promise<Category>;
   deleteCategory: (id: string) => Promise<void>;

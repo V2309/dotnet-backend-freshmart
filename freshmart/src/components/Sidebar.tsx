@@ -11,6 +11,7 @@ import {
   Users, 
   BarChart3, 
   UserCheck, 
+  Clock,
   Settings, 
   LogOut,
   ShoppingBag,
@@ -108,8 +109,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: null
     },
     {
+      id: 'shifts' as ViewMode,
+      label: 'Ca làm việc & Két',
+      icon: Clock,
+      badge: null
+    },
+    {
       id: 'employees' as ViewMode,
-      label: 'Ca & Nhân viên',
+      label: 'Nhân viên',
       icon: UserCheck,
       badge: null
     }

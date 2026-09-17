@@ -8,6 +8,7 @@ export type ViewMode =
   | 'purchases' 
   | 'customers' 
   | 'reports' 
+  | 'shifts'
   | 'employees';
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -35,6 +36,19 @@ export interface CartItem {
   discountPercent: number;
 }
 
+export interface HeldCartData {
+  id: string;
+  cart: CartItem[];
+  customer?: Customer | null;
+  customerName?: string;
+  discount?: number;
+  discountPercent?: number;
+  vatRate?: number;
+  createdAt: string;
+  orderType?: OrderType;
+  note?: string;
+}
+
 export interface Customer {
   id: string;
   code: string;
@@ -43,6 +57,7 @@ export interface Customer {
   points: number;
   totalSpent: number;
   tier: 'Bạc' | 'Vàng' | 'Kim Cương' | 'Thân thiết';
+  gender?: string;
   lastVisit: string;
 }
 

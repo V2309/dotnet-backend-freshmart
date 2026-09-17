@@ -1,15 +1,26 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, Order, Customer, CartItem, NotificationItem, SupplierPurchase, CashierShift } from '../types';
+import { 
+  Product, 
+  Order, 
+  Customer, 
+  NotificationItem, 
+  SupplierPurchase, 
+  CartItem, 
+  HeldCartData, 
+  CashierShift,
+  StockStatus
+} from '../types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_CUSTOMERS, 
-  INITIAL_ORDERS, 
-  INITIAL_NOTIFICATIONS, 
   INITIAL_PURCHASES, 
   CURRENT_SHIFT 
 } from '../data/mockData';
-import { HeldCartData } from '../components/HeldOrdersModal';
-import { OrderType } from '../components/POSView';
+import { productService } from '../services/product.service';
+import { customerService } from '../services/customer.service';
+import { purchaseService } from '../services/purchase.service';
+import { notificationService } from '../services/notification.service';
+import { orderService } from '../services/order.service';
 import { sound } from '../utils/sound';
 
 interface AppContextType {
@@ -20,8 +31,8 @@ interface AppContextType {
   notifications: NotificationItem[];
   purchases: SupplierPurchase[];
   currentShift: CashierShift;
-
-  // Cart & POS State
+  
+  // POS Cart State
   cart: CartItem[];
   heldOrders: HeldCartData[];
   selectedCustomer: Customer | null;
@@ -33,40 +44,50 @@ interface AppContextType {
   vatAmount: number;
   total: number;
   lowStockCount: number;
-
-  // Modals
+  
+  // Modals & Popups
   isPaymentModalOpen: boolean;
-  setIsPaymentModalOpen: (open: boolean) => void;
   activeReceiptOrder: Order | null;
-  setActiveReceiptOrder: (order: Order | null) => void;
   isQuickSearchOpen: boolean;
-  setIsQuickSearchOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
   isCalculatorOpen: boolean;
-  setIsCalculatorOpen: (open: boolean) => void;
   isHeldOrdersOpen: boolean;
-  setIsHeldOrdersOpen: (open: boolean) => void;
   isHotkeysOpen: boolean;
-  setIsHotkeysOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
 
-  // Setters & Actions
+  // Setters
   setSelectedCustomer: (cust: Customer | null) => void;
   setDiscountPercent: (pct: number) => void;
   setVatRate: (rate: number) => void;
+  
+  // Handlers - POS Cart
   handleAddToCart: (product: Product) => void;
   handleUpdateQuantity: (productId: string, quantity: number) => void;
   handleRemoveFromCart: (productId: string) => void;
   handleClearCart: () => void;
-  handleParkCurrentOrder: (orderType?: OrderType) => void;
+  handleParkCurrentOrder: (customerName?: string, note?: string) => void;
   handleResumeOrder: (heldId: string) => void;
+  handleRestoreHeldOrder: (heldId: string) => void;
   handleDeleteHeldOrder: (heldId: string) => void;
-  handleCompleteOrder: (newOrder: Order) => void;
-  handleAddProduct: (newProductData: Omit<Product, 'id'>) => void;
-  handleUpdateProduct: (updatedProduct: Product) => void;
+  handleApplyDiscount: (percent: number) => void;
+  handleSetVatRate: (vat: number) => void;
+  handleSelectCustomer: (customer: Customer | null) => void;
+  handleCompleteOrder: (order: Order) => void;
+  
+  // Handlers - Modals
+  setIsPaymentModalOpen: (open: boolean) => void;
+  setActiveReceiptOrder: (order: Order | null) => void;
+  setIsQuickSearchOpen: (open: boolean) => void;
+  setIsCalculatorOpen: (open: boolean) => void;
+  setIsHeldOrdersOpen: (open: boolean) => void;
+  setIsHotkeysOpen: (open: boolean) => void;
+
+  // Handlers - Data Management
+  handleAddProduct: (product: Omit<Product, 'id'>) => void;
+  handleUpdateProduct: (product: Product) => void;
   handleAdjustStock: (productId: string, amountChange: number) => void;
   handleSetExactStock: (productId: string, exactStock: number) => void;
-  handleAddPurchase: (newPO: SupplierPurchase) => void;
+  handleAddPurchase: (po: SupplierPurchase) => void;
   handleReceivePurchase: (purchaseId: string) => void;
-  handleAddCustomer: (newCust: Omit<Customer, 'id'>) => void;
+  handleAddCustomer: (customer: Omit<Customer, 'id' | 'code' | 'points' | 'totalSpent' | 'lastVisit'>) => void;
   handleMarkNotificationRead: (id: string) => void;
   handleClearAllNotifications: () => void;
   handleCloseShift: () => void;
@@ -77,18 +98,115 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Core Data State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [purchases, setPurchases] = useState<SupplierPurchase[]>(INITIAL_PURCHASES);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [purchases, setPurchases] = useState<SupplierPurchase[]>([]);
   const [currentShift, setCurrentShift] = useState<CashierShift>(CURRENT_SHIFT);
 
-  // Active POS Cart State
-  const [cart, setCart] = useState<CartItem[]>([
-    { product: INITIAL_PRODUCTS[0], quantity: 2, discountPercent: 0 },
-    { product: INITIAL_PRODUCTS[2], quantity: 5, discountPercent: 0 },
-    { product: INITIAL_PRODUCTS[3], quantity: 1, discountPercent: 0 },
-  ]);
+  // Load real products from Backend API on mount
+  useEffect(() => {
+    productService.getAll()
+      .then((apiProducts) => {
+        if (apiProducts && apiProducts.length > 0) {
+          const mapped: Product[] = apiProducts.map((p) => {
+            const rawStatus = (p.status || '').toString().toLowerCase();
+            const status: StockStatus = 
+              rawStatus === 'instock' ? 'in_stock' :
+              rawStatus === 'lowstock' ? 'low_stock' : 'out_of_stock';
+
+            return {
+              id: p.id,
+              sku: p.sku,
+              barcode: p.barcode || '',
+              name: p.name,
+              category: p.categoryName || 'Khác',
+              unit: p.unit,
+              costPrice: p.costPrice,
+              sellPrice: p.sellPrice,
+              stock: p.stock,
+              minStock: p.minStock,
+              image: p.imageUrl || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&auto=format&fit=crop&q=80',
+              status,
+              supplier: p.supplierName || 'Chưa gán',
+            };
+          });
+          setProducts(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn('API Products fallback to initial state:', err);
+      });
+
+    // Load real customers from Backend API on mount
+    customerService.getAll()
+      .then((apiCustomers) => {
+        if (apiCustomers) {
+          setCustomers(apiCustomers as Customer[]);
+        }
+      })
+      .catch((err) => {
+        console.warn('API Customers error:', err);
+        setCustomers([]);
+      });
+
+    // Load real purchases from Backend API on mount
+    purchaseService.getAll()
+      .then((apiPurchases) => {
+        if (apiPurchases) {
+          const mappedPurchases: SupplierPurchase[] = apiPurchases.map((po) => ({
+            id: po.id,
+            code: po.code,
+            supplierName: po.supplierName,
+            createdAt: po.createdAt ? po.createdAt.split('T')[0] : '',
+            expectedDate: po.expectedDate || '',
+            totalItems: po.totalItems,
+            totalValue: po.totalValue,
+            status: (po.status || 'pending').toLowerCase() as any,
+            createdBy: po.createdByName,
+          }));
+          setPurchases(mappedPurchases);
+        }
+      })
+      .catch((err) => {
+        console.warn('API Purchases error:', err);
+        setPurchases([]);
+      });
+
+    // Load real notifications from Backend API on mount
+    notificationService.getAll()
+      .then((apiNotifs) => {
+        if (apiNotifs) {
+          setNotifications(apiNotifs.map((n) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            time: n.time || 'Vừa xong',
+            type: (n.type || 'info').toLowerCase() as any,
+            read: n.read ?? n.isRead ?? false,
+          })));
+        }
+      })
+      .catch((err) => {
+        console.warn('API Notifications error:', err);
+        setNotifications([]);
+      });
+
+    // Load real orders from Backend API on mount
+    orderService.getAll()
+      .then((apiOrders) => {
+        if (apiOrders) {
+          setOrders(apiOrders);
+        }
+      })
+      .catch((err) => {
+        console.warn('API Orders error:', err);
+        setOrders([]);
+      });
+  }, []);
+
+  // Active POS Cart State (Khởi tạo giỏ hàng trống khi mở ca / vào quầy POS)
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [heldOrders, setHeldOrders] = useState<HeldCartData[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -149,6 +267,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleRemoveFromCart = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
+    sound.playTrash();
   };
 
   const handleClearCart = () => {
@@ -157,46 +276,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscountPercent(0);
   };
 
+  const handleApplyDiscount = (percent: number) => {
+    setDiscountPercent(percent);
+  };
+
+  const handleSetVatRate = (vat: number) => {
+    setVatRate(vat);
+  };
+
+  const handleSelectCustomer = (customer: Customer | null) => {
+    setSelectedCustomer(customer);
+  };
+
   // Hold / Park Order
-  const handleParkCurrentOrder = (orderType: OrderType = 'dine_in') => {
+  const handleParkCurrentOrder = (customerName?: string, note?: string) => {
     if (cart.length === 0) return;
     const newHeld: HeldCartData = {
-      id: 'hold-' + Date.now(),
-      cart,
-      customer: selectedCustomer,
-      discount: discountPercent,
+      id: 'held-' + Date.now(),
       createdAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-      orderType
+      customerName: customerName || (selectedCustomer ? selectedCustomer.name : 'Khách lẻ'),
+      cart: [...cart],
+      discountPercent,
+      vatRate,
+      note
     };
     setHeldOrders(prev => [newHeld, ...prev]);
     handleClearCart();
-
-    setNotifications(prev => [
-      {
-        id: 'notif-' + Date.now(),
-        title: 'Đã lưu đơn vào hàng chờ',
-        message: `Đơn gồm ${cart.length} món đã được lưu tạm. Có thể mở lại bất cứ lúc nào.`,
-        time: 'Vừa xong',
-        type: 'info',
-        read: false
-      },
-      ...prev
-    ]);
+    sound.playHold();
   };
 
-  const handleResumeOrder = (heldId: string) => {
+  const handleRestoreHeldOrder = (heldId: string) => {
     const target = heldOrders.find(h => h.id === heldId);
     if (!target) return;
     setCart(target.cart);
-    setSelectedCustomer(target.customer);
-    setDiscountPercent(target.discount);
+    setDiscountPercent(target.discountPercent);
+    setVatRate(target.vatRate);
     setHeldOrders(prev => prev.filter(h => h.id !== heldId));
     setIsHeldOrdersOpen(false);
-    sound.playPop();
   };
 
   const handleDeleteHeldOrder = (heldId: string) => {
-    sound.playTrash();
     setHeldOrders(prev => prev.filter(h => h.id !== heldId));
   };
 
@@ -273,6 +392,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (p.id === productId) {
           const newStock = Math.max(0, p.stock + amountChange);
           const newStatus = newStock <= 0 ? 'out_of_stock' : newStock <= p.minStock ? 'low_stock' : 'in_stock';
+          
+          // Sync quick-stock with backend API
+          productService.quickAdjustStock(productId, { stock: newStock }).catch(console.error);
+
           return { ...p, stock: newStock, status: newStatus };
         }
         return p;
@@ -281,10 +404,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleSetExactStock = (productId: string, exactStock: number) => {
+    const newStock = Math.max(0, exactStock);
+    // Sync quick-stock with backend API
+    productService.quickAdjustStock(productId, { stock: newStock }).catch(console.error);
+
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
-          const newStock = Math.max(0, exactStock);
           const newStatus = newStock <= 0 ? 'out_of_stock' : newStock <= p.minStock ? 'low_stock' : 'in_stock';
           return { ...p, stock: newStock, status: newStatus };
         }
@@ -302,17 +428,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPurchases(prev =>
       prev.map(p => p.id === purchaseId ? { ...p, status: 'received' } : p)
     );
-    setNotifications(prev => [
-      {
-        id: 'notif-' + Date.now(),
-        title: 'Nhập kho thành công',
-        message: `Đơn nhập hàng #${purchaseId} đã được ghi nhận vào sổ kho.`,
-        time: 'Vừa xong',
-        type: 'success',
-        read: false
-      },
-      ...prev
-    ]);
+
+    const newNotifItem: NotificationItem = {
+      id: 'notif-' + Date.now(),
+      title: 'Nhập kho thành công',
+      message: `Đơn nhập hàng #${purchaseId} đã được ghi nhận vào sổ kho.`,
+      time: 'Vừa xong',
+      type: 'success',
+      read: false
+    };
+
+    setNotifications(prev => [newNotifItem, ...prev]);
+
+    // Persist to backend database
+    notificationService.create({
+      title: newNotifItem.title,
+      message: newNotifItem.message,
+      type: 'success',
+    }).then((created) => {
+      if (created && created.id) {
+        setNotifications(prev => prev.map(n => n.id === newNotifItem.id ? { ...n, id: created.id } : n));
+      }
+    }).catch((err) => {
+      console.warn('Cannot persist notification to backend:', err);
+    });
   };
 
   // Customer Handlers
@@ -329,10 +468,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
+    // If it's a valid GUID or exists on backend, sync it
+    if (id && !id.startsWith('notif-')) {
+      notificationService.markAsRead(id).catch(console.error);
+    }
   };
 
   const handleClearAllNotifications = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    notificationService.markAllAsRead().catch(console.error);
   };
 
   const handleCloseShift = () => {
@@ -387,7 +531,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         handleRemoveFromCart,
         handleClearCart,
         handleParkCurrentOrder,
-        handleResumeOrder,
+        handleResumeOrder: handleRestoreHeldOrder,
+        handleRestoreHeldOrder,
         handleDeleteHeldOrder,
         handleCompleteOrder,
         handleAddProduct,

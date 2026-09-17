@@ -1,48 +1,63 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Users, 
-  Plus, 
-  Search, 
   Award, 
   Phone, 
-  CreditCard, 
   Gift, 
-  Calendar,
-  Check,
-  Crown,
-  Download,
-  Copy,
-  X,
-  UserPlus,
-  Sparkles,
-  TrendingUp,
-  UserCheck
+  Check, 
+  Crown, 
+  Download, 
+  UserPlus, 
+  Eye,
+  RefreshCw
 } from 'lucide-react';
-import { Customer } from '../types';
+import { Customer, CreateCustomerRequest } from '../types/customer';
+import { customerService } from '../services/customer.service';
 import { formatCurrency, formatDate } from '../utils/format';
 import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
+import { CustomerKpiStats } from './customers/CustomerKpiStats';
+import { CustomerFilterBar } from './customers/CustomerFilterBar';
+import { CustomerAddModal } from './customers/CustomerAddModal';
+import { CustomerDetailModal } from './customers/CustomerDetailModal';
 
 interface CustomersViewProps {
-  customers: Customer[];
-  onAddCustomer: (customer: Omit<Customer, 'id'>) => void;
+  customers?: Customer[];
+  onAddCustomer?: (customer: Omit<Customer, 'id'>) => void;
 }
 
 export const CustomersView: React.FC<CustomersViewProps> = ({
-  customers,
-  onAddCustomer
+  onAddCustomer,
 }) => {
+  const [customerList, setCustomerList] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState('');
   const [selectedTier, setSelectedTier] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [tier, setTier] = useState<Customer['tier']>('Thân thiết');
+  const [selectedCustomerForView, setSelectedCustomerForView] = useState<Customer | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+
+  // Load danh sách khách hàng từ Backend API
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await customerService.getAll();
+      setCustomerList(data ?? []);
+    } catch (error) {
+      console.warn('Lỗi tải khách hàng từ API:', error);
+      setCustomerList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   // Copy helper
-  const handleCopy = (text: string, label: string) => {
+  const handleCopy = (text?: string, label?: string) => {
+    if (!text || !label) return;
     navigator.clipboard?.writeText(text);
     sound.playPop();
     setCopiedId(label);
@@ -50,163 +65,241 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   };
 
   // KPIs
-  const totalCustomers = customers.length;
-  const vipCustomersCount = customers.filter(c => c.tier === 'Kim Cương' || c.tier === 'Vàng').length;
-  const totalPoints = customers.reduce((sum, c) => sum + c.points, 0);
-  const totalSpentAll = customers.reduce((sum, c) => sum + c.totalSpent, 0);
+  const totalCustomers = customerList.length;
+  const vipCustomersCount = customerList.filter(
+    (c) => c.tier === 'Kim Cương' || c.tier === 'Diamond' || c.tier === 'Vàng' || c.tier === 'Gold'
+  ).length;
+  const totalPoints = customerList.reduce((sum, c) => sum + (c.points || 0), 0);
+  const totalSpentAll = customerList.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
 
   // Filtered customers
   const filtered = useMemo(() => {
-    return customers.filter(c => {
-      if (selectedTier !== 'all' && c.tier !== selectedTier) return false;
+    return customerList.filter((c) => {
+      if (selectedTier !== 'all') {
+        const tierName = (c.tier || '').toLowerCase();
+        const selTier = selectedTier.toLowerCase();
+        const isMatch =
+          tierName === selTier ||
+          (selTier.includes('thân thiết') && (tierName.includes('deal') || tierName.includes('thân thiết'))) ||
+          (selTier.includes('bạc') && (tierName.includes('silver') || tierName.includes('bạc'))) ||
+          (selTier.includes('vàng') && (tierName.includes('gold') || tierName.includes('vàng'))) ||
+          (selTier.includes('kim cương') && (tierName.includes('diamond') || tierName.includes('kim cương')));
+
+        if (!isMatch) return false;
+      }
+
       const q = search.toLowerCase().trim();
       if (q) {
         return (
           c.name.toLowerCase().includes(q) ||
-          c.phone.includes(q) ||
+          (c.phone && c.phone.includes(q)) ||
           c.code.toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [customers, selectedTier, search]);
+  }, [customerList, selectedTier, search]);
 
-  const handleCreateCustomer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  // Xử lý tạo mới khách hàng qua API
+  const handleCreateCustomer = async (data: CreateCustomerRequest) => {
+    try {
+      sound.playSuccessChime();
+      const newCustomer = await customerService.create(data);
+      setCustomerList((prev) => [newCustomer, ...prev]);
 
-    sound.playSuccessChime();
-    onAddCustomer({
-      code: 'KH-' + Math.floor(100 + Math.random() * 900),
-      name,
-      phone,
-      points: 50, // Welcome points
-      totalSpent: 0,
-      tier,
-      lastVisit: new Date().toISOString().split('T')[0]
-    });
-
-    setName('');
-    setPhone('');
-    setShowAddModal(false);
+      if (onAddCustomer) {
+        onAddCustomer({
+          code: newCustomer.code,
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+          points: newCustomer.points,
+          totalSpent: newCustomer.totalSpent,
+          tier: newCustomer.tier,
+          gender: newCustomer.gender,
+          lastVisit: newCustomer.lastVisit || new Date().toISOString().split('T')[0],
+        });
+      }
+    } catch (error) {
+      console.error('Lỗi thêm khách hàng:', error);
+      alert('Không thể tạo khách hàng. Vui lòng kiểm tra lại số điện thoại trùng lặp!');
+      throw error;
+    }
   };
 
-  // Define Table Columns
-  const columns: ColumnDef<Customer>[] = useMemo(() => [
-    {
-      key: 'customer',
-      header: 'Khách hàng',
-      render: (c) => {
-        const initials = c.name.split(' ').map(n => n[0]).slice(-2).join('').toUpperCase();
-        return (
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FFF5E9] border border-[#FED8AB] text-[#FE9F43] flex items-center justify-center font-black text-xs shrink-0">
-              {initials}
+  // Xóa khách hàng
+  const handleDeleteCustomer = async (id: string, name: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa khách hàng "${name}"?`)) return;
+
+    try {
+      sound.playPop();
+      await customerService.delete(id);
+      setCustomerList((prev) => prev.filter((c) => c.id !== id));
+    } catch (error) {
+      console.error('Lỗi xóa khách hàng:', error);
+      alert('Không thể xóa khách hàng này do có đơn hàng liên quan!');
+    }
+  };
+
+  // Helper render Badge Hạng thẻ
+  const renderTierBadge = (tier: string) => {
+    const t = (tier || '').toLowerCase();
+    if (t.includes('kim cương') || t.includes('diamond')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+          <Crown className="w-3 h-3 text-purple-600" />
+          Kim Cương
+        </span>
+      );
+    }
+    if (t.includes('vàng') || t.includes('gold')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+          <Award className="w-3 h-3 text-amber-600" />
+          Vàng
+        </span>
+      );
+    }
+    if (t.includes('bạc') || t.includes('silver')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+          Bạc
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+        Thân thiết
+      </span>
+    );
+  };
+
+  // Cấu hình các cột trong bảng DataTable
+  const columns: ColumnDef<Customer>[] = useMemo(
+    () => [
+      {
+        key: 'customer',
+        header: 'Khách hàng',
+        render: (c) => {
+          const initials = c.name
+            .split(' ')
+            .map((n) => n[0])
+            .slice(-2)
+            .join('')
+            .toUpperCase();
+          return (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FFF5E9] border border-[#FED8AB] text-[#FE9F43] flex items-center justify-center font-black text-xs shrink-0">
+                {initials}
+              </div>
+              <div>
+                <p className="font-bold text-[#212B36] text-[13px] leading-tight">{c.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] text-[#646B72] font-mono">Mã: {c.code}</span>
+                  {c.gender && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-medium">
+                      {c.gender}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-[#212B36] text-[13px] leading-tight">{c.name}</p>
-              <span className="text-[10px] text-[#646B72] font-mono">Mã: {c.code}</span>
-            </div>
-          </div>
-        );
+          );
+        },
       },
-    },
-    {
-      key: 'phone',
-      header: 'Số điện thoại',
-      render: (c) => (
-        <button
-          type="button"
-          onClick={() => handleCopy(c.phone, `phone-${c.id}`)}
-          className="font-mono font-bold text-[#212B36] hover:text-[#FE9F43] flex items-center gap-1.5 transition cursor-pointer"
-        >
-          <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-          <span>{c.phone}</span>
-          {copiedId === `phone-${c.id}` && <Check className="w-3 h-3 text-[#00A389]" />}
-        </button>
-      ),
-    },
-    {
-      key: 'tier',
-      header: 'Hạng hội viên',
-      align: 'center',
-      render: (c) => {
-        if (c.tier === 'Kim Cương') {
-          return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-              <Crown className="w-3 h-3 text-purple-600" />
-              Kim Cương
-            </span>
-          );
-        }
-        if (c.tier === 'Vàng') {
-          return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-              <Award className="w-3 h-3 text-amber-600" />
-              Vàng
-            </span>
-          );
-        }
-        if (c.tier === 'Bạc') {
-          return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-              Bạc
-            </span>
-          );
-        }
-        return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-            Thân thiết
+      {
+        key: 'phone',
+        header: 'Số điện thoại',
+        render: (c) => (
+          <button
+            type="button"
+            onClick={() => handleCopy(c.phone, `phone-${c.id}`)}
+            className="font-mono font-bold text-[#212B36] hover:text-[#FE9F43] flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+            <span>{c.phone || 'Chưa cập nhật'}</span>
+            {copiedId === `phone-${c.id}` && <Check className="w-3 h-3 text-[#00A389]" />}
+          </button>
+        ),
+      },
+      {
+        key: 'tier',
+        header: 'Hạng hội viên',
+        align: 'center',
+        render: (c) => renderTierBadge(c.tier),
+      },
+      {
+        key: 'points',
+        header: 'Điểm tích lũy',
+        align: 'center',
+        render: (c) => (
+          <span className="inline-flex items-center gap-1 bg-[#E8F8F5] text-[#00A389] border border-[#00A389]/20 font-black px-2.5 py-0.5 rounded-full text-xs tabular-nums">
+            <Gift className="w-3 h-3" />
+            {(c.points || 0).toLocaleString('vi-VN')} điểm
           </span>
-        );
+        ),
       },
-    },
-    {
-      key: 'points',
-      header: 'Điểm tích lũy',
-      align: 'center',
-      render: (c) => (
-        <span className="inline-flex items-center gap-1 bg-[#E8F8F5] text-[#00A389] border border-[#00A389]/20 font-black px-2.5 py-0.5 rounded-full text-xs tabular-nums">
-          <Gift className="w-3 h-3" />
-          {c.points} điểm
-        </span>
-      ),
-    },
-    {
-      key: 'totalSpent',
-      header: 'Tổng chi tiêu',
-      align: 'right',
-      render: (c) => (
-        <span className="font-black text-[#212B36] text-xs tabular-nums">
-          {formatCurrency(c.totalSpent)}
-        </span>
-      ),
-    },
-    {
-      key: 'lastVisit',
-      header: 'Lần mua gần nhất',
-      align: 'right',
-      render: (c) => (
-        <span className="text-[#646B72] font-medium text-xs">
-          {formatDate(c.lastVisit)}
-        </span>
-      ),
-    },
-  ], [copiedId]);
+      {
+        key: 'totalSpent',
+        header: 'Tổng chi tiêu',
+        align: 'right',
+        render: (c) => (
+          <span className="font-black text-[#212B36] text-xs tabular-nums">
+            {formatCurrency(c.totalSpent || 0)}
+          </span>
+        ),
+      },
+      {
+        key: 'lastVisit',
+        header: 'Lần mua gần nhất',
+        align: 'right',
+        render: (c) => (
+          <span className="text-[#646B72] font-medium text-xs">
+            {c.lastVisit ? formatDate(c.lastVisit) : 'Mới tạo'}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Thao tác',
+        align: 'center',
+        render: (c) => (
+          <button
+            type="button"
+            title="Xem chi tiết khách hàng"
+            onClick={() => {
+              sound.playPop();
+              setSelectedCustomerForView(c);
+            }}
+            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+        ),
+      },
+    ],
+    [copiedId]
+  );
 
   return (
-    <div id="customers-view" className="p-4 lg:p-6 space-y-5 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] pb-16 select-none animate-in fade-in-50 duration-200">
-      
+    <div
+      id="customers-view"
+      className="p-4 lg:p-6 space-y-5 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] pb-16 select-none animate-in fade-in-50 duration-200"
+    >
       {/* 1. Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#EAEAEA] shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-[#212B36] tracking-tight">Khách hàng & Hội viên</h1>
-            <span className="bg-[#FFF5E9] text-[#FE9F43] border border-[#FED8AB] text-xs font-black px-2.5 py-0.5 rounded-full">
-              {customers.length} hội viên
-            </span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-r from-[#FE9F43] to-[#FFA858] flex items-center justify-center text-white shadow-xs">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-[#212B36] tracking-tight flex items-center gap-2">
+                Quản lý Khách hàng & Hội viên
+                {loading && <RefreshCw className="w-4 h-4 animate-spin text-[#FE9F43]" />}
+              </h1>
+            </div>
           </div>
-          <p className="text-xs text-[#646B72] mt-0.5 font-medium">
+          <p className="text-xs text-[#646B72] font-medium mt-1">
             Quản lý dữ liệu hội viên, chính sách tích lũy điểm thưởng và phân hạng khách hàng VIP
           </p>
         </div>
@@ -238,215 +331,45 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       </div>
 
       {/* 2. Top Metric KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Total Customers */}
-        <div className="bg-white p-4 rounded-2xl border border-[#EAEAEA] shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-[#FFF5E9] text-[#FE9F43] flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#646B72] uppercase tracking-wider">Tổng số hội viên</p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-black text-[#212B36] tabular-nums">{totalCustomers}</span>
-              <span className="text-[11px] text-[#646B72] font-semibold">người</span>
-            </div>
-          </div>
-        </div>
-
-        {/* VIP Customers */}
-        <div className="bg-white p-4 rounded-2xl border border-[#EAEAEA] shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-[#FBF0FF] text-[#9333EA] flex items-center justify-center shrink-0">
-            <Crown className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#646B72] uppercase tracking-wider">Hội viên VIP (Vàng/Kim Cương)</p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-black text-[#9333EA] tabular-nums">{vipCustomersCount}</span>
-              <span className="text-[11px] text-[#646B72] font-semibold">khách VIP</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Total Points */}
-        <div className="bg-white p-4 rounded-2xl border border-[#EAEAEA] shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-[#E8F8F5] text-[#00A389] flex items-center justify-center shrink-0">
-            <Gift className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#646B72] uppercase tracking-wider">Tổng điểm tích lũy</p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-black text-[#00A389] tabular-nums">{totalPoints.toLocaleString('vi-VN')}</span>
-              <span className="text-[11px] text-[#646B72] font-semibold">điểm</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Total Revenue from Members */}
-        <div className="bg-white p-4 rounded-2xl border border-[#EAEAEA] shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-[#EAF8FF] text-[#2E6FF2] flex items-center justify-center shrink-0">
-            <CreditCard className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#646B72] uppercase tracking-wider">Doanh thu từ hội viên</p>
-            <h3 className="text-xl font-black text-[#2E6FF2] mt-0.5 tabular-nums">
-              {formatCurrency(totalSpentAll)}
-            </h3>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Reusable DataTable with Integrated Search, Filters & Pagination */}
-      <DataTable<Customer>
-        data={filtered}
-        columns={columns}
-        keyExtractor={(c) => c.id}
-        searchable
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Tìm theo họ tên, số điện thoại hoặc mã hội viên..."
-        toolbarFilters={
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => {
-                sound.playPop();
-                setSelectedTier('all');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedTier === 'all'
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-[#F8FAFC] text-[#646B72] hover:bg-slate-100 border border-[#EAEAEA]'
-              }`}
-            >
-              Tất cả ({customers.length})
-            </button>
-            <button
-              onClick={() => {
-                sound.playPop();
-                setSelectedTier('Kim Cương');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedTier === 'Kim Cương'
-                  ? 'bg-purple-600 text-white font-black'
-                  : 'bg-[#F8FAFC] text-purple-700 hover:bg-purple-50 border border-[#EAEAEA]'
-              }`}
-            >
-              👑 Kim Cương
-            </button>
-            <button
-              onClick={() => {
-                sound.playPop();
-                setSelectedTier('Vàng');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedTier === 'Vàng'
-                  ? 'bg-amber-500 text-white font-black'
-                  : 'bg-[#F8FAFC] text-amber-700 hover:bg-amber-50 border border-[#EAEAEA]'
-              }`}
-            >
-              🥇 Vàng
-            </button>
-            <button
-              onClick={() => {
-                sound.playPop();
-                setSelectedTier('Bạc');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedTier === 'Bạc'
-                  ? 'bg-blue-600 text-white font-black'
-                  : 'bg-[#F8FAFC] text-blue-700 hover:bg-blue-50 border border-[#EAEAEA]'
-              }`}
-            >
-              🥈 Bạc
-            </button>
-          </div>
-        }
-        pagination
-        pageSize={10}
-        emptyMessage="Không tìm thấy hội viên nào"
-        emptySubMessage="Thử tìm kiếm với số điện thoại hoặc từ khóa khác"
+      <CustomerKpiStats
+        totalCustomers={totalCustomers}
+        vipCustomersCount={vipCustomersCount}
+        totalPoints={totalPoints}
+        totalSpentAll={totalSpentAll}
       />
 
-      {/* 5. Add Customer Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <form 
-            onSubmit={handleCreateCustomer} 
-            className="bg-white rounded-2xl shadow-2xl border border-[#EAEAEA] w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div className="px-5 py-4 border-b border-[#EAEAEA] flex items-center justify-between bg-[#F8FAFC]">
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#FE9F43]" />
-                <h3 className="text-sm font-black text-[#212B36]">Đăng ký khách hàng thân thiết mới</h3>
-              </div>
-              <button
-                type="button" 
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* 3. Search Bar & Tier Filter */}
+      <CustomerFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        selectedTier={selectedTier}
+        onTierChange={setSelectedTier}
+        totalCount={filtered.length}
+      />
 
-            <div className="p-5 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-[#212B36] mb-1">Họ và tên khách hàng *</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ví dụ: Hoàng Minh Thảo"
-                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] focus:border-[#FE9F43] focus:ring-1 focus:ring-[#FE9F43]"
-                  autoFocus
-                />
-              </div>
+      {/* 4. Data Table */}
+      <div className="bg-white rounded-2xl border border-[#EAEAEA] shadow-2xs overflow-hidden">
+        <DataTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(c) => c.id}
+          emptyMessage="Không tìm thấy khách hàng nào khớp với điều kiện tìm kiếm."
+        />
+      </div>
 
-              <div>
-                <label className="block font-bold text-[#212B36] mb-1">Số điện thoại *</label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="09xx xxx xxx"
-                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-mono text-[#212B36] focus:border-[#FE9F43] focus:ring-1 focus:ring-[#FE9F43]"
-                />
-              </div>
+      {/* 5. Modal Thêm khách hàng mới */}
+      <CustomerAddModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleCreateCustomer}
+      />
 
-              <div>
-                <label className="block font-bold text-[#212B36] mb-1">Hạng hội viên ban đầu</label>
-                <select
-                  value={tier}
-                  onChange={(e) => setTier(e.target.value as Customer['tier'])}
-                  className="w-full px-3 py-2 border border-[#EAEAEA] rounded-xl font-semibold text-[#212B36] bg-white focus:border-[#FE9F43]"
-                >
-                  <option value="Thân thiết">Thân thiết (Tặng 50 điểm chào mừng)</option>
-                  <option value="Bạc">Bạc</option>
-                  <option value="Vàng">Vàng</option>
-                  <option value="Kim Cương">Kim Cương</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="px-5 py-4 border-t border-[#EAEAEA] bg-[#F8FAFC] flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-xs font-bold text-[#646B72] hover:bg-slate-200 rounded-xl transition cursor-pointer"
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 text-xs font-black bg-[#FE9F43] hover:bg-[#F59030] text-white rounded-xl shadow-md transition active:scale-95 cursor-pointer"
-              >
-                Đăng ký ngay
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* 6. Modal Xem chi tiết khách hàng */}
+      <CustomerDetailModal
+        isOpen={!!selectedCustomerForView}
+        customer={selectedCustomerForView}
+        onClose={() => setSelectedCustomerForView(null)}
+      />
     </div>
   );
 };
-export default CustomersView;

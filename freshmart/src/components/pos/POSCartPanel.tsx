@@ -11,11 +11,16 @@ import {
    Copy,
    Receipt,
    Sparkles,
-   ArrowRight
+   ArrowRight,
+   Search,
+   Phone,
+   Loader2,
+   X
  } from 'lucide-react';
 import { CartItem, Customer } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { sound } from '../../utils/sound';
+import { customerService } from '../../services/customer.service';
 import { POSProductAddedList } from './POSProductAddedList';
 import { POSOrderModifiers } from './POSOrderModifiers';
 import { QuickAddCustomerModal } from '../QuickAddCustomerModal';
@@ -68,6 +73,10 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
 }) => {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false);
   const [showQuickAddCust, setShowQuickAddCust] = useState<boolean>(false);
+  const [searchPhone, setSearchPhone] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchResultCust, setSearchResultCust] = useState<Customer | null | undefined>(undefined);
+  const [quickAddInitialPhone, setQuickAddInitialPhone] = useState<string>('');
   const [localShipping, setLocalShipping] = useState<number>(shippingFee);
   const [copiedId, setCopiedId] = useState<boolean>(false);
   const [localOrderCode] = useState<string>(() => 'HD' + Math.floor(1000 + Math.random() * 9000));
@@ -87,6 +96,44 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
     if (onSetShippingFee) onSetShippingFee(fee);
   };
 
+  const handleSearchCustomer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = searchPhone.trim();
+    if (!query) {
+      setSearchResultCust(undefined);
+      return;
+    }
+
+    // 1. Kiểm tra nhanh trong danh sách hiện có
+    const foundLocal = customers.find(c => 
+      (c.phone && c.phone.trim() === query) || 
+      c.code.toLowerCase() === query.toLowerCase()
+    );
+
+    if (foundLocal) {
+      setSearchResultCust(foundLocal);
+      return;
+    }
+
+    // 2. Gọi API backend /api/v1/customers/search-pos
+    try {
+      setIsSearching(true);
+      const res = await customerService.searchForPos(query);
+      setSearchResultCust(res || null);
+    } catch (err) {
+      console.error('Lỗi tìm khách hàng:', err);
+      setSearchResultCust(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleOpenQuickAddWithPhone = (phoneToPass: string) => {
+    setQuickAddInitialPhone(phoneToPass);
+    setShowQuickAddCust(true);
+    setShowCustomerDropdown(false);
+  };
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -97,6 +144,17 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Lọc danh sách khách hàng khi gõ
+  const displayedCustomers = useMemo(() => {
+    if (!searchPhone.trim()) return customers;
+    const q = searchPhone.trim().toLowerCase();
+    return customers.filter(c => 
+      (c.phone && c.phone.includes(q)) || 
+      c.name.toLowerCase().includes(q) || 
+      c.code.toLowerCase().includes(q)
+    );
+  }, [customers, searchPhone]);
 
   // Calculations
   const subtotal = useMemo(() => {
@@ -198,41 +256,143 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
             </button>
           </div>
 
-          {/* Customer Dropdown Menu */}
+          {/* Customer Dropdown Menu with Phone Search */}
           {showCustomerDropdown && (
             <div 
               id="pos-customer-dropdown-menu"
-              className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 p-1.5 divide-y divide-slate-100 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+              className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200/90 rounded-2xl shadow-2xl z-50 p-2 max-h-80 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-2"
             >
-              <div
-                onClick={() => {
-                  onSelectCustomer(null);
-                  setShowCustomerDropdown(false);
-                }}
-                className="p-2.5 text-xs hover:bg-[#FFF9F2] cursor-pointer rounded-xl font-bold text-slate-800 flex items-center justify-between transition-colors"
+              {/* Search Bar by Phone / Name */}
+              <form 
+                onSubmit={handleSearchCustomer}
+                className="flex items-center gap-1.5 p-1 bg-slate-50 border border-slate-200 rounded-xl focus-within:border-amber-400 focus-within:ring-1 focus-within:ring-amber-400 transition-all"
               >
-                <span>Khách lẻ vãng lai</span>
-                {!selectedCustomer && <Check className="w-4 h-4 text-emerald-600" />}
-              </div>
+                <div className="relative flex-1 flex items-center">
+                  <Phone className="w-3.5 h-3.5 text-slate-400 ml-2 shrink-0" />
+                  <input
+                    type="text"
+                    value={searchPhone}
+                    onChange={(e) => {
+                      setSearchPhone(e.target.value);
+                      if (searchResultCust !== undefined) setSearchResultCust(undefined);
+                    }}
+                    placeholder="Nhập SĐT hoặc tên khách..."
+                    className="w-full bg-transparent px-2 py-1 text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-medium"
+                    autoFocus
+                  />
+                  {searchPhone && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchPhone('');
+                        setSearchResultCust(undefined);
+                      }}
+                      className="p-0.5 text-slate-400 hover:text-slate-600 rounded-md mr-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-              {customers.map((c) => (
+                <button
+                  type="submit"
+                  disabled={isSearching}
+                  className="px-2.5 py-1.5 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-[11px] rounded-lg shadow-2xs flex items-center gap-1 transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                  title="Tìm kiếm khách hàng theo SĐT"
+                >
+                  {isSearching ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Search className="w-3 h-3" />
+                  )}
+                  <span>Tìm</span>
+                </button>
+              </form>
+
+              {/* Explicit Search Result Box (from API lookup) */}
+              {searchResultCust !== undefined && (
+                <div className="animate-in fade-in duration-100">
+                  {searchResultCust ? (
+                    <div className="p-2.5 bg-amber-50/80 border border-amber-300/80 rounded-xl flex items-center justify-between gap-2">
+                      <div className="truncate">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs text-slate-800 truncate">{searchResultCust.name}</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-200 text-amber-900">{searchResultCust.tier}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 font-mono mt-0.5">
+                          {searchResultCust.phone} • {searchResultCust.points} điểm tích lũy
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectCustomer(searchResultCust);
+                          setShowCustomerDropdown(false);
+                          setSearchPhone('');
+                          setSearchResultCust(undefined);
+                        }}
+                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg transition shrink-0 cursor-pointer"
+                      >
+                        Chọn
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-2 text-rose-800">
+                      <div className="text-[11px]">
+                        <span className="font-bold">Không tìm thấy</span>
+                        <p className="text-[10px] text-rose-600">SĐT này chưa có trong hệ thống</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenQuickAddWithPhone(searchPhone)}
+                        className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] rounded-lg transition shrink-0 flex items-center gap-1 cursor-pointer"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        <span>Thêm mới</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Standard List */}
+              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
                 <div
-                  key={c.id}
                   onClick={() => {
-                    onSelectCustomer(c);
+                    onSelectCustomer(null);
                     setShowCustomerDropdown(false);
                   }}
-                  className="p-2.5 text-xs hover:bg-[#FFF9F2] cursor-pointer rounded-xl font-medium text-slate-800 flex items-center justify-between transition-colors"
+                  className="p-2 text-xs hover:bg-[#FFF9F2] cursor-pointer rounded-xl font-bold text-slate-800 flex items-center justify-between transition-colors"
                 >
-                  <div>
-                    <p className="font-bold text-slate-800">{c.name}</p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                      {c.phone} • <span className="text-amber-700 font-bold">{c.tier}</span>
-                    </p>
-                  </div>
-                  {selectedCustomer?.id === c.id && <Check className="w-4 h-4 text-amber-600" />}
+                  <span>Khách lẻ vãng lai</span>
+                  {!selectedCustomer && <Check className="w-4 h-4 text-emerald-600" />}
                 </div>
-              ))}
+
+                {displayedCustomers.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      onSelectCustomer(c);
+                      setShowCustomerDropdown(false);
+                    }}
+                    className="p-2 text-xs hover:bg-[#FFF9F2] cursor-pointer rounded-xl font-medium text-slate-800 flex items-center justify-between transition-colors"
+                  >
+                    <div className="truncate">
+                      <p className="font-bold text-slate-800 truncate">{c.name}</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {c.phone} • <span className="text-amber-700 font-bold">{c.tier}</span> ({c.points} điểm)
+                      </p>
+                    </div>
+                    {selectedCustomer?.id === c.id && <Check className="w-4 h-4 text-amber-600 shrink-0 ml-2" />}
+                  </div>
+                ))}
+
+                {displayedCustomers.length === 0 && !searchResultCust && (
+                  <div className="py-3 text-center text-slate-400 text-xs">
+                    Không tìm thấy khách hàng nào
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -349,14 +509,15 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
       {showQuickAddCust && (
         <QuickAddCustomerModal
           isOpen={showQuickAddCust}
-          onClose={() => setShowQuickAddCust(false)}
+          initialPhone={quickAddInitialPhone}
+          onClose={() => {
+            setShowQuickAddCust(false);
+            setQuickAddInitialPhone('');
+          }}
           onCustomerAdded={(newC) => {
             onAddCustomer(newC);
-            const createdCust: Customer = {
-              ...newC,
-              id: 'c-' + Date.now()
-            };
-            onSelectCustomer(createdCust);
+            onSelectCustomer(newC);
+            setQuickAddInitialPhone('');
           }}
         />
       )}

@@ -1,4 +1,4 @@
-﻿using dotnet_backend_freshmart.Models;
+using dotnet_backend_freshmart.Models;
 using dotnet_backend_freshmart.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -30,10 +30,12 @@ namespace dotnet_backend_freshmart.Data.Configuration
             builder.HasIndex(p => p.Barcode)
                 .IsUnique();
 
-            // Name
+            // Name & Description
             builder.Property(p => p.Name)
                 .IsRequired()
                 .HasMaxLength(255);
+
+            builder.Property(p => p.Description);
 
             // Unit
             builder.Property(p => p.Unit)
@@ -68,7 +70,7 @@ namespace dotnet_backend_freshmart.Data.Configuration
             builder.Property(p => p.Notes);
             builder.Property(p => p.ExpiryDate);
 
-            // Status Enum (Lưu string hoặc Postgres enum)
+            // Status Enum (Lưu dạng String giống như Employee Role)
             builder.Property(p => p.Status)
                 .IsRequired()
                 .HasConversion<string>()

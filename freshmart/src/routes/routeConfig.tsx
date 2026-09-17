@@ -13,6 +13,7 @@ import PurchasesPage from '@/pages/Purchases/PurchasesPage';
 import CustomersPage from '@/pages/Customers/CustomersPage';
 import ReportsPage from '@/pages/Reports/ReportsPage';
 import EmployeesPage from '@/pages/Employees/EmployeesPage';
+import ShiftsPage from '@/pages/Shifts/ShiftsPage';
 import NotFoundPage from '@/pages/NotFound/NotFoundPage';
 
 import MainLayout from '@/layouts/MainLayout';
@@ -86,6 +87,10 @@ export const routeConfig = [
           {
             path: '/employees',
             element: <EmployeesPage />,
+          },
+          {
+            path: '/shifts',
+            element: <ShiftsPage />,
           },
         ],
       },

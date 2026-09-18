@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import { Order } from '../types';
 import { formatCurrency, formatDateTime } from '../utils/format';
-import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
 import { reportService } from '../services/report.service';
 import type { 
@@ -95,7 +94,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -277,7 +275,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
         <div className="flex items-center gap-2.5">
           <button 
             onClick={() => {
-              sound.playPop();
               alert('Đã xuất báo cáo tài chính định dạng Excel kế toán thành công!');
             }}
             className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -377,7 +374,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ orders = [] }) => {
                 <button
                   key={t}
                   onClick={() => {
-                    sound.playPop();
                     setTimeframe(t);
                   }}
                   className={`px-3 py-1 rounded-lg transition cursor-pointer capitalize ${

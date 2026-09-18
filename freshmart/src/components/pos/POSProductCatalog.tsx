@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Product, OrderType } from '../../types';
 import { POSProductCard } from './POSProductCard';
-import { sound } from '../../utils/sound';
 
 import { useCategoryStore } from '../../stores/categoryStore';
 
@@ -103,14 +102,12 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
 
   const handlePrevCategory = () => {
     if (canGoPrev) {
-      sound.playPop();
       setCategoryStartIndex(prev => Math.max(0, prev - 1));
     }
   };
 
   const handleNextCategory = () => {
     if (canGoNext) {
-      sound.playPop();
       setCategoryStartIndex(prev => Math.min(categoriesList.length - VISIBLE_COUNT, prev + 1));
     }
   };
@@ -124,7 +121,6 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
     if (e.key === 'Enter' && filteredProducts.length > 0) {
       const topMatch = filteredProducts[0];
       if (topMatch.stock > 0) {
-        sound.playScanBeep();
         onAddToCart(topMatch);
         onSetSearchQuery('');
       }
@@ -132,7 +128,6 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
   };
 
   const handleAddWithSound = (p: Product) => {
-    sound.playPop();
     onAddToCart(p);
   };
 
@@ -153,7 +148,6 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
           {/* Reset Button (Indigo / Purple) */}
           <button
             onClick={() => {
-              sound.playPop();
               setCategoryStartIndex(0);
               onResetFilters();
             }}
@@ -216,7 +210,6 @@ export const POSProductCatalog: React.FC<POSProductCatalogProps> = ({
               <button
                 key={cat.id}
                 onClick={() => {
-                  sound.playPop();
                   onSelectCategory(cat.id);
                 }}
                 className={`bg-white rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-center text-center transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 animate-in fade-in-50 duration-150 ${

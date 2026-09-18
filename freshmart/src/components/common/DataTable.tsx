@@ -5,7 +5,6 @@ import {
   ArrowDown, 
   Inbox 
 } from 'lucide-react';
-import { sound } from '../../utils/sound';
 import { SearchInput } from './SearchInput';
 import { Pagination } from './Pagination';
 
@@ -185,7 +184,6 @@ export function DataTable<T>({
                     type="checkbox"
                     checked={isAllCurrentSelected}
                     onChange={() => {
-                      sound.playPop();
                       if (onSelectAll) onSelectAll();
                     }}
                     className="w-4 h-4 rounded border-slate-300 text-[#FE9F43] focus:ring-[#FE9F43] cursor-pointer"
@@ -212,7 +210,6 @@ export function DataTable<T>({
                     }`}
                     onClick={() => {
                       if (col.sortable && onSort) {
-                        sound.playPop();
                         onSort(col.sortKey || col.key);
                       }
                     }}
@@ -300,7 +297,6 @@ export function DataTable<T>({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {
-                            sound.playPop();
                             if (onSelectRow) onSelectRow(itemId);
                           }}
                           className="w-4 h-4 rounded border-slate-300 text-[#FE9F43] focus:ring-[#FE9F43] cursor-pointer"

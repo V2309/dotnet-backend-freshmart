@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Phone, Check, Mail, Power, KeyRound, Trash2 } from 'lucide-react';
 import { Employee } from '../../types/employee';
-import { sound } from '../../utils/sound';
 import { DataTable, ColumnDef } from '../common';
+import { div } from 'motion/react-client';
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -25,7 +25,6 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -131,11 +130,10 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
           <button
             onClick={() => onToggleStatus(s)}
             title={s.isActive ? 'Khóa tài khoản nhân viên' : 'Mở khóa tài khoản'}
-            className={`p-1.5 rounded-lg border transition cursor-pointer ${
-              s.isActive
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${s.isActive
                 ? 'text-amber-600 hover:bg-amber-50 border-amber-200'
                 : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200'
-            }`}
+              }`}
           >
             <Power className="w-3.5 h-3.5" />
           </button>

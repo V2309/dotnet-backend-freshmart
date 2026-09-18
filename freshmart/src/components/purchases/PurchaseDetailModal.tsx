@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { PurchaseOrder } from '../../types/purchase';
 import { formatCurrency, formatDate } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface PurchaseDetailModalProps {
   isOpen: boolean;
@@ -40,7 +39,6 @@ export const PurchaseDetailModal: React.FC<PurchaseDetailModalProps> = ({
 
   const handleCopyCode = () => {
     navigator.clipboard?.writeText(purchase.code);
-    sound.playPop();
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 1500);
   };
@@ -51,7 +49,6 @@ export const PurchaseDetailModal: React.FC<PurchaseDetailModalProps> = ({
     try {
       setIsProcessing(true);
       await onReceive(purchase.id);
-      sound.playSuccessChime();
       onClose();
     } catch (err) {
       console.error('Lỗi nhận hàng:', err);
@@ -67,7 +64,6 @@ export const PurchaseDetailModal: React.FC<PurchaseDetailModalProps> = ({
     try {
       setIsProcessing(true);
       await onCancel(purchase.id);
-      sound.playPop();
       onClose();
     } catch (err) {
       console.error('Lỗi hủy đơn:', err);

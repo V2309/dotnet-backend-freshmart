@@ -4,7 +4,6 @@ import { useEmployeeStore } from '@/stores/employeeStore';
 import { AlertCircle } from 'lucide-react';
 import { CashierShift } from '../types';
 import { Employee } from '../types/employee';
-import { sound } from '../utils/sound';
 import {
   EmployeeKpis,
   ShiftStatusBanner,
@@ -53,7 +52,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
 
   const handleToggleStatus = async (emp: Employee) => {
     try {
-      sound.playPop();
       await toggleStatus(emp.id || emp.code);
     } catch (err: any) {
       alert(err.message || 'Không thể thay đổi trạng thái.');
@@ -63,7 +61,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
   const handleOpenResetPin = (emp: Employee) => {
     setSelectedEmployee(emp);
     setShowResetPinModal(true);
-    sound.playPop();
   };
 
   const handleDelete = async (emp: Employee) => {
@@ -72,7 +69,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
     }
     try {
       await deleteEmployee(emp.id || emp.code);
-      sound.playPop();
     } catch (err: any) {
       alert(err.message || 'Xóa nhân viên thất bại.');
     }
@@ -123,7 +119,6 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
         onFilterChange={setFilter}
         onRefresh={fetchEmployees}
         onOpenAddModal={() => {
-          sound.playPop();
           setShowAddModal(true);
         }}
         isLoading={isLoading}

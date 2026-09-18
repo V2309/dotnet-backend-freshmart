@@ -4,6 +4,7 @@ using dotnet_backend_freshmart.Exceptions;
 using dotnet_backend_freshmart.Mappings;
 using dotnet_backend_freshmart.Models;
 using dotnet_backend_freshmart.Models.Enums;
+using dotnet_backend_freshmart.Services.DashboardService;
 using Microsoft.EntityFrameworkCore;
 
 namespace dotnet_backend_freshmart.Services.OrderService
@@ -11,10 +12,12 @@ namespace dotnet_backend_freshmart.Services.OrderService
     public class OrderService : IOrderService
     {
         private readonly AppDbContext _context;
+        private readonly IDashboardService _dashboardService;
 
-        public OrderService(AppDbContext context)
+        public OrderService(AppDbContext context, IDashboardService dashboardService)
         {
             _context = context;
+            _dashboardService = dashboardService;
         }
 
         // 1. THANH TOÁN ĐƠN HÀNG POS (CHECKOUT)
@@ -189,6 +192,8 @@ namespace dotnet_backend_freshmart.Services.OrderService
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                _ = _dashboardService.BroadcastDashboardUpdateAsync();
 
                 return order.ToResponse();
             }
@@ -373,6 +378,8 @@ namespace dotnet_backend_freshmart.Services.OrderService
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                _ = _dashboardService.BroadcastDashboardUpdateAsync();
 
                 return order.ToResponse();
             }

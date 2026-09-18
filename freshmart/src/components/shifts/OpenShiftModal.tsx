@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, PlayCircle, DollarSign, Clock, FileText, User } from 'lucide-react';
 import type { OpenShiftRequest } from '../../types/shift';
 import type { Employee } from '../../types/employee';
-import { sound } from '../../utils/sound';
 
 interface OpenShiftModalProps {
   isOpen: boolean;
@@ -42,7 +41,6 @@ export const OpenShiftModal: React.FC<OpenShiftModalProps> = ({
         employeeId: employeeId || undefined,
         notes: notes.trim() || undefined,
       });
-      sound.playPop();
       onClose();
     } catch (err: any) {
       alert(err.message || 'Mở ca làm việc thất bại');
@@ -67,7 +65,6 @@ export const OpenShiftModal: React.FC<OpenShiftModalProps> = ({
           </div>
           <button
             onClick={() => {
-              sound.playPop();
               onClose();
             }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[#646B72] hover:text-[#212B36] hover:bg-slate-100 transition cursor-pointer"
@@ -89,7 +86,6 @@ export const OpenShiftModal: React.FC<OpenShiftModalProps> = ({
                   key={name}
                   type="button"
                   onClick={() => {
-                    sound.playPop();
                     setShiftName(name);
                   }}
                   className={`px-3 py-2 text-xs rounded-xl border transition-all text-center cursor-pointer ${
@@ -156,7 +152,6 @@ export const OpenShiftModal: React.FC<OpenShiftModalProps> = ({
                   key={amount}
                   type="button"
                   onClick={() => {
-                    sound.playPop();
                     setStartingCash(amount);
                   }}
                   className={`px-3 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer ${
@@ -190,7 +185,6 @@ export const OpenShiftModal: React.FC<OpenShiftModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                sound.playPop();
                 onClose();
               }}
               className="px-4 py-2.5 text-xs font-bold text-[#646B72] hover:text-[#212B36] hover:bg-slate-100 rounded-xl transition cursor-pointer"

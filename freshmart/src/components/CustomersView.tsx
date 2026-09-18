@@ -1,20 +1,19 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Users, 
-  Award, 
-  Phone, 
-  Gift, 
-  Check, 
-  Crown, 
-  Download, 
-  UserPlus, 
+import {
+  Users,
+  Award,
+  Phone,
+  Gift,
+  Check,
+  Crown,
+  Download,
+  UserPlus,
   Eye,
   RefreshCw
 } from 'lucide-react';
 import { Customer, CreateCustomerRequest } from '../types/customer';
 import { customerService } from '../services/customer.service';
 import { formatCurrency, formatDate } from '../utils/format';
-import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
 import { CustomerKpiStats } from './customers/CustomerKpiStats';
 import { CustomerFilterBar } from './customers/CustomerFilterBar';
@@ -59,7 +58,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const handleCopy = (text?: string, label?: string) => {
     if (!text || !label) return;
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -103,7 +101,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   // Xử lý tạo mới khách hàng qua API
   const handleCreateCustomer = async (data: CreateCustomerRequest) => {
     try {
-      sound.playSuccessChime();
       const newCustomer = await customerService.create(data);
       setCustomerList((prev) => [newCustomer, ...prev]);
 
@@ -131,7 +128,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     if (!window.confirm(`Bạn có chắc chắn muốn xóa khách hàng "${name}"?`)) return;
 
     try {
-      sound.playPop();
       await customerService.delete(id);
       setCustomerList((prev) => prev.filter((c) => c.id !== id));
     } catch (error) {
@@ -267,7 +263,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             type="button"
             title="Xem chi tiết khách hàng"
             onClick={() => {
-              sound.playPop();
               setSelectedCustomerForView(c);
             }}
             className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
@@ -307,7 +302,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
-              sound.playPop();
               alert(`Đã xuất ${filtered.length} thông tin khách hàng ra file Excel!`);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -319,7 +313,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           <button
             id="add-new-customer-btn"
             onClick={() => {
-              sound.playPop();
               setShowAddModal(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-[#FE9F43] to-[#FFA858] hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"

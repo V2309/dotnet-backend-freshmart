@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { 
   LayoutGrid, 
   Coffee, 
@@ -7,12 +7,11 @@ import {
   Milk, 
   Sparkles, 
   Apple, 
-  Volume2, 
-  VolumeX,
+  Package,
   LucideIcon
 } from 'lucide-react';
 import { Product } from '../../types';
-import { sound } from '../../utils/sound';
+import { useCategoryStore } from '../../stores/categoryStore';
 
 export interface CategoryItem {
   id: string;
@@ -25,29 +24,80 @@ interface POSCategoryRailProps {
   products: Product[];
   selectedCategory: string;
   onSelectCategory: (categoryId: string) => void;
-  soundEnabled: boolean;
-  onToggleSound: () => void;
   onQuickAddProduct: (product: Product) => void;
 }
+
+const getCategoryIcon = (name: string): LucideIcon => {
+  const n = (name || '').toLowerCase();
+  if (n.includes('uống') || n.includes('drink') || n.includes('nước') || n.includes('trà') || n.includes('cà phê') || n.includes('cafe')) {
+    return Coffee;
+  }
+  if (n.includes('mì') || n.includes('thực phẩm') || n.includes('food') || n.includes('ăn')) {
+    return UtensilsCrossed;
+  }
+  if (n.includes('bánh') || n.includes('kẹo') || n.includes('snack') || n.includes('sweet') || n.includes('dessert')) {
+    return Cookie;
+  }
+  if (n.includes('sữa') || n.includes('bơ') || n.includes('dairy') || n.includes('milk') || n.includes('phô mai')) {
+    return Milk;
+  }
+  if (n.includes('tươi') || n.includes('rau') || n.includes('củ') || n.includes('quả') || n.includes('trái') || n.includes('thịt') || n.includes('cá')) {
+    return Apple;
+  }
+  if (n.includes('gia vị') || n.includes('hóa') || n.includes('chăm sóc') || n.includes('tẩy') || n.includes('giặt')) {
+    return Sparkles;
+  }
+  return Package;
+};
 
 export const POSCategoryRail: React.FC<POSCategoryRailProps> = ({
   products,
   selectedCategory,
   onSelectCategory,
-  soundEnabled,
-  onToggleSound,
   onQuickAddProduct
 }) => {
+  const { categories, fetchCategories } = useCategoryStore();
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   const categoriesList = useMemo<CategoryItem[]>(() => {
-    return [
-      { id: 'all', name: 'Tất cả', icon: LayoutGrid, count: products.length },
-      { id: 'Đồ uống', name: 'Đồ uống', icon: Coffee, count: products.filter(p => p.category === 'Đồ uống').length },
-      { id: 'Mì & Thực phẩm', name: 'Mì & Ăn liền', icon: UtensilsCrossed, count: products.filter(p => p.category === 'Mì & Thực phẩm').length },
-      { id: 'Bánh kẹo', name: 'Bánh kẹo', icon: Cookie, count: products.filter(p => p.category === 'Bánh kẹo').length },
-      { id: 'Sữa & Bơ', name: 'Sữa & Bơ', icon: Milk, count: products.filter(p => p.category === 'Sữa & Bơ').length },
-      { id: 'Gia vị & Hóa phẩm', name: 'Gia vị & Hóa', icon: Sparkles, count: products.filter(p => p.category === 'Gia vị & Hóa phẩm').length },
-      { id: 'Đồ tươi sống', name: 'Tươi sống', icon: Apple, count: products.filter(p => p.category === 'Đồ tươi sống').length },
-    ];
+    const allItem: CategoryItem = {
+      id: 'all',
+      name: 'Tất cả',
+      icon: LayoutGrid,
+      count: products.length
+    };
+
+    if (categories && categories.length > 0) {
+      const activeCats = categories.filter(c => c.isActive !== false);
+      const dbCategoryItems: CategoryItem[] = activeCats.map(cat => ({
+        id: cat.name,
+        name: cat.name,
+        icon: getCategoryIcon(cat.name),
+        count: products.filter(p => p.category === cat.name || p.categoryId === cat.id || p.category === cat.slug).length
+      }));
+      return [allItem, ...dbCategoryItems];
+    }
+
+    // Fallback: derive distinct categories from active products list
+    const distinctCategories: string[] = Array.from(
+      new Set(products.map(p => p.category).filter((cat): cat is string => Boolean(cat)))
+    );
+    const dynamicItems: CategoryItem[] = distinctCategories.map((catName: string) => ({
+      id: catName,
+      name: catName,
+      icon: getCategoryIcon(catName),
+      count: products.filter(p => p.category === catName).length
+    }));
+
+    return [allItem, ...dynamicItems];
+  }, [products, categories]);
+
+  // Real sample quick products from database
+  const sampleProducts = useMemo(() => {
+    return products.slice(0, 3);
   }, [products]);
 
   return (
@@ -76,7 +126,6 @@ export const POSCategoryRail: React.FC<POSCategoryRailProps> = ({
               id={`pos-category-${cat.id}`}
               onClick={() => {
                 onSelectCategory(cat.id);
-                sound.playPop();
               }}
               className={`w-full text-left p-2.5 rounded-xl transition-all duration-150 flex flex-col gap-1.5 border relative group cursor-pointer ${
                 isSelected
@@ -109,64 +158,29 @@ export const POSCategoryRail: React.FC<POSCategoryRailProps> = ({
         })}
       </div>
 
-      {/* Quick Scanner Simulation & Audio Switch */}
-      <div className="pt-3 border-t border-[#F1F3F5] mt-3 space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-extrabold text-[#646B72] uppercase tracking-wider">
-            Quét mẫu
-          </span>
-          <button
-            onClick={onToggleSound}
-            className="text-[#646B72] hover:text-[#212B36] p-1 rounded-md hover:bg-slate-100 transition cursor-pointer"
-            title={soundEnabled ? 'Tắt âm thanh máy POS' : 'Bật âm thanh máy POS'}
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5 text-primary-500" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-            )}
-          </button>
-        </div>
+      {/* Quick Scanner Simulation from actual products */}
+      {sampleProducts.length > 0 && (
+        <div className="pt-3 border-t border-[#F1F3F5] mt-3 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-extrabold text-[#646B72] uppercase tracking-wider">
+              Quét mẫu
+            </span>
+          </div>
 
-        <div className="space-y-1">
-          <button
-            onClick={() => {
-              const item = products.find(p => p.sku === 'DOU-001');
-              if (item) {
-                sound.playScanBeep();
-                onQuickAddProduct(item);
-              }
-            }}
-            className="w-full text-left text-[11px] px-2.5 py-1.5 bg-[#F7F7F7] hover:bg-[#FFF5E9] hover:text-primary-700 hover:border-[#FED8AB] border border-[#EAEAEA] rounded-lg text-[#212B36] font-medium truncate transition cursor-pointer"
-          >
-            ⚡ Coca Sleek 320ml
-          </button>
-          <button
-            onClick={() => {
-              const item = products.find(p => p.sku === 'MTP-001');
-              if (item) {
-                sound.playScanBeep();
-                onQuickAddProduct(item);
-              }
-            }}
-            className="w-full text-left text-[11px] px-2.5 py-1.5 bg-[#F7F7F7] hover:bg-[#FFF5E9] hover:text-primary-700 hover:border-[#FED8AB] border border-[#EAEAEA] rounded-lg text-[#212B36] font-medium truncate transition cursor-pointer"
-          >
-            ⚡ Mì Hảo Hảo Tôm
-          </button>
-          <button
-            onClick={() => {
-              const item = products.find(p => p.sku === 'DOU-002');
-              if (item) {
-                sound.playScanBeep();
-                onQuickAddProduct(item);
-              }
-            }}
-            className="w-full text-left text-[11px] px-2.5 py-1.5 bg-[#F7F7F7] hover:bg-[#FFF5E9] hover:text-primary-700 hover:border-[#FED8AB] border border-[#EAEAEA] rounded-lg text-[#212B36] font-medium truncate transition cursor-pointer"
-          >
-            ⚡ Nước Sting Dâu
-          </button>
+          <div className="space-y-1">
+            {sampleProducts.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onQuickAddProduct(item)}
+                className="w-full text-left text-[11px] px-2.5 py-1.5 bg-[#F7F7F7] hover:bg-[#FFF5E9] hover:text-primary-700 hover:border-[#FED8AB] border border-[#EAEAEA] rounded-lg text-[#212B36] font-medium truncate transition cursor-pointer"
+                title={`Thêm nhanh ${item.name}`}
+              >
+                ⚡ {item.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 };

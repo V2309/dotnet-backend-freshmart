@@ -1,4 +1,5 @@
 using dotnet_backend_freshmart.Config;
+using dotnet_backend_freshmart.Hubs;
 using dotnet_backend_freshmart.Middleware;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
@@ -46,4 +47,5 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<DashboardHub>("/hubs/dashboard");
 app.Run();

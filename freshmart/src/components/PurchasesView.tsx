@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Truck, 
-  Plus, 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  FileText, 
-  Search, 
+import {
+  Truck,
+  Plus,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Search,
   DollarSign,
   ChevronRight,
   Download,
@@ -23,7 +23,6 @@ import {
 import { PurchaseOrder, CreatePurchaseOrderRequest } from '../types/purchase';
 import { purchaseService } from '../services/purchase.service';
 import { formatCurrency, formatDate } from '../utils/format';
-import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
 import { PurchaseKpiStats } from './purchases/PurchaseKpiStats';
 import { PurchaseFilterBar } from './purchases/PurchaseFilterBar';
@@ -66,7 +65,6 @@ export const PurchasesView: React.FC<PurchasesViewProps> = () => {
   // Copy helper
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -102,7 +100,6 @@ export const PurchasesView: React.FC<PurchasesViewProps> = () => {
   // Tạo đơn nhập hàng mới qua API
   const handleCreatePurchase = async (data: CreatePurchaseOrderRequest) => {
     try {
-      sound.playSuccessChime();
       const created = await purchaseService.create(data);
       setPurchaseList((prev) => [created, ...prev]);
     } catch (error) {
@@ -245,7 +242,6 @@ export const PurchasesView: React.FC<PurchasesViewProps> = () => {
               <button
                 type="button"
                 onClick={() => {
-                  sound.playPop();
                   setViewingPurchase(po);
                 }}
                 className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
@@ -300,7 +296,6 @@ export const PurchasesView: React.FC<PurchasesViewProps> = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
-              sound.playPop();
               alert(`Đã xuất ${filtered.length} phiếu nhập hàng ra file Excel!`);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -312,7 +307,6 @@ export const PurchasesView: React.FC<PurchasesViewProps> = () => {
           <button
             id="add-new-purchase-btn"
             onClick={() => {
-              sound.playPop();
               setShowAddModal(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-[#FE9F43] to-[#FFA858] hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"

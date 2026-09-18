@@ -4,6 +4,7 @@ using dotnet_backend_freshmart.Exceptions;
 using dotnet_backend_freshmart.Mappings;
 using dotnet_backend_freshmart.Models;
 using dotnet_backend_freshmart.Models.Enums;
+using dotnet_backend_freshmart.Services.DashboardService;
 using Microsoft.EntityFrameworkCore;
 
 namespace dotnet_backend_freshmart.Services.PurchaseOrderService
@@ -11,10 +12,12 @@ namespace dotnet_backend_freshmart.Services.PurchaseOrderService
     public class PurchaseOrderService : IPurchaseOrderService
     {
         private readonly AppDbContext _context;
+        private readonly IDashboardService _dashboardService;
 
-        public PurchaseOrderService(AppDbContext context)
+        public PurchaseOrderService(AppDbContext context, IDashboardService dashboardService)
         {
             _context = context;
+            _dashboardService = dashboardService;
         }
 
         // =========================================================
@@ -197,6 +200,8 @@ namespace dotnet_backend_freshmart.Services.PurchaseOrderService
             _context.PurchaseOrders.Add(purchaseOrder);
             await _context.SaveChangesAsync();
 
+            _ = _dashboardService.BroadcastDashboardUpdateAsync();
+
             return purchaseOrder.ToResponse();
         }
 
@@ -272,6 +277,8 @@ namespace dotnet_backend_freshmart.Services.PurchaseOrderService
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                _ = _dashboardService.BroadcastDashboardUpdateAsync();
 
                 return po.ToResponse();
             }

@@ -2,6 +2,7 @@ using dotnet_backend_freshmart.Data;
 using dotnet_backend_freshmart.Services;
 using dotnet_backend_freshmart.Services.CategoryService;
 using dotnet_backend_freshmart.Services.CustomerService;
+using dotnet_backend_freshmart.Services.DashboardService;
 using dotnet_backend_freshmart.Services.EmployeeService;
 using dotnet_backend_freshmart.Services.InventoryService;
 using dotnet_backend_freshmart.Services.OrderService;
@@ -45,6 +46,7 @@ namespace dotnet_backend_freshmart.Config
         /// </summary>
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
+            services.AddSignalR();
             services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
             services.AddScoped<ITokenService, JwtTokenService>();
             services.AddScoped<IAuthService, AuthService>();
@@ -59,6 +61,7 @@ namespace dotnet_backend_freshmart.Config
             services.AddScoped<IInventoryService, InventoryService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IReportService, ReportService>();
+            services.AddScoped<IDashboardService, DashboardService>();
             return services;
         }
         /// <summary>
@@ -108,6 +111,19 @@ namespace dotnet_backend_freshmart.Config
                     ValidAudience = configuration["Jwt:Audience"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
             services.AddAuthorization();

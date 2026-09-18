@@ -4,6 +4,7 @@ using dotnet_backend_freshmart.Exceptions;
 using dotnet_backend_freshmart.Mappings;
 using dotnet_backend_freshmart.Models;
 using dotnet_backend_freshmart.Models.Enums;
+using dotnet_backend_freshmart.Services.DashboardService;
 using Microsoft.EntityFrameworkCore;
 
 namespace dotnet_backend_freshmart.Services.InventoryService
@@ -11,10 +12,12 @@ namespace dotnet_backend_freshmart.Services.InventoryService
     public class InventoryService : IInventoryService
     {
         private readonly AppDbContext _context;
+        private readonly IDashboardService _dashboardService;
 
-        public InventoryService(AppDbContext context)
+        public InventoryService(AppDbContext context, IDashboardService dashboardService)
         {
             _context = context;
+            _dashboardService = dashboardService;
         }
 
         // =========================================================
@@ -122,6 +125,8 @@ namespace dotnet_backend_freshmart.Services.InventoryService
                 _context.InventoryAdjustments.Add(adjustment);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                _ = _dashboardService.BroadcastDashboardUpdateAsync();
 
                 // Load employee name for response
                 if (employeeId.HasValue)

@@ -1,21 +1,20 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Boxes, 
-  AlertTriangle, 
-  RotateCcw, 
-  CheckCircle2, 
-  Truck, 
-  History, 
-  Download, 
-  Copy, 
-  Check, 
+import {
+  Boxes,
+  AlertTriangle,
+  RotateCcw,
+  CheckCircle2,
+  Truck,
+  History,
+  Download,
+  Copy,
+  Check,
   SlidersHorizontal,
   RefreshCw,
   XCircle
 } from 'lucide-react';
 import { Product, StockStatus } from '../types';
 import { formatCurrency } from '../utils/format';
-import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
 import { productService } from '../services/product.service';
 import { inventoryService } from '../services/inventory.service';
@@ -55,8 +54,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
             rawStatus === 'instock' || rawStatus === 'in_stock'
               ? 'in_stock'
               : rawStatus === 'lowstock' || rawStatus === 'low_stock'
-              ? 'low_stock'
-              : 'out_of_stock';
+                ? 'low_stock'
+                : 'out_of_stock';
 
           return {
             id: p.id,
@@ -91,7 +90,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
   // Copy helper
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 1500);
   };
@@ -203,9 +201,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           return (
             <div className="flex flex-col items-center">
               <span
-                className={`text-sm font-black tabular-nums ${
-                  isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-slate-800'
-                }`}
+                className={`text-sm font-black tabular-nums ${isOut ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-slate-800'
+                  }`}
               >
                 {p.stock} <span className="text-[10px] font-bold text-slate-400">{p.unit}</span>
               </span>
@@ -253,7 +250,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           <button
             type="button"
             onClick={() => {
-              sound.playPop();
               setAdjustingProduct(p);
             }}
             className="px-2.5 py-1.5 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 border border-slate-200 hover:border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 mx-auto cursor-pointer"
@@ -294,7 +290,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
-              sound.playPop();
               alert(`Đã xuất báo cáo tồn kho ${filtered.length} mặt hàng ra file Excel!`);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -306,7 +301,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({
           {onNavigateToPurchases && (
             <button
               onClick={() => {
-                sound.playPop();
                 onNavigateToPurchases();
               }}
               className="flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-[#FE9F43] to-[#FFA858] hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"

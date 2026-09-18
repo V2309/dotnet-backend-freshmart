@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useEmployeeStore } from '../../stores/employeeStore';
 import { EmployeeRoleType } from '../../types/employee';
-import { sound } from '../../utils/sound';
 
 interface AddEmployeeModalProps {
   isOpen: boolean;
@@ -110,8 +109,6 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         pin: pin.trim(),
         notes: notes.trim() || undefined,
       });
-
-      sound.playSuccessChime();
       setName('');
       setPhone('');
       setEmail('');

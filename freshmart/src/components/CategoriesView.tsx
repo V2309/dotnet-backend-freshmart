@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@/types/category';
-import { sound } from '@/utils/sound';
 import {
   CategoryKpis,
   CategoryFilterBar,
@@ -42,13 +41,11 @@ export const CategoriesView: React.FC = () => {
   const handleOpenAddModal = () => {
     setEditingCategory(null);
     setShowModal(true);
-    sound.playPop();
   };
 
   const handleOpenEditModal = (cat: Category) => {
     setEditingCategory(cat);
     setShowModal(true);
-    sound.playPop();
   };
 
   const handleDelete = async (cat: Category) => {
@@ -63,7 +60,6 @@ export const CategoriesView: React.FC = () => {
 
     try {
       await deleteCategory(cat.id);
-      sound.playPop();
     } catch (err: any) {
       alert(err.message || 'Xóa danh mục thất bại');
     }
@@ -75,7 +71,6 @@ export const CategoriesView: React.FC = () => {
     } else {
       await createCategory(data as CreateCategoryRequest);
     }
-    sound.playSuccessChime();
   };
 
   return (

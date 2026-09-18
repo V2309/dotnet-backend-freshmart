@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { CartItem, Customer, PaymentMethod, Order } from '../types';
 import { formatCurrency } from '../utils/format';
-import { sound } from '../utils/sound';
 import { useOrderStore } from '../stores/orderStore';
 import { useShiftStore } from '../stores/shiftStore';
 
@@ -98,7 +97,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      sound.playSuccessChime();
 
       const isValidGuid = (id?: string) => !!id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
       const backendPaymentMethod = method === 'cash' ? 'Cash' : method === 'transfer' ? 'VietQR' : 'PosCard';
@@ -300,7 +298,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                       key={i}
                       type="button"
                       onClick={() => {
-                        sound.playPop();
                         setAmountReceived(chip.value);
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition active:scale-95 ${

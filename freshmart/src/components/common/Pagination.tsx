@@ -5,7 +5,6 @@ import {
   ChevronsLeft, 
   ChevronsRight 
 } from 'lucide-react';
-import { sound } from '../../utils/sound';
 
 export interface PaginationProps {
   currentPage: number;
@@ -32,13 +31,11 @@ export const Pagination: React.FC<PaginationProps> = ({
 }) => {
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
-      sound.playPop();
       onPageChange(newPage);
     }
   };
 
   const handlePageSizeChange = (newSize: number) => {
-    sound.playPop();
     if (onPageSizeChange) {
       onPageSizeChange(newSize);
     }

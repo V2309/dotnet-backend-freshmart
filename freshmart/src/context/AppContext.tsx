@@ -10,18 +10,25 @@ import {
   CashierShift,
   StockStatus
 } from '../types';
-import { 
-  INITIAL_PRODUCTS, 
-  INITIAL_CUSTOMERS, 
-  INITIAL_PURCHASES, 
-  CURRENT_SHIFT 
-} from '../data/mockData';
 import { productService } from '../services/product.service';
 import { customerService } from '../services/customer.service';
 import { purchaseService } from '../services/purchase.service';
 import { notificationService } from '../services/notification.service';
 import { orderService } from '../services/order.service';
-import { sound } from '../utils/sound';
+import { shiftService } from '../services/shift.service';
+
+const DEFAULT_SHIFT: CashierShift = {
+  id: '',
+  cashierName: 'Nhân viên thu ngân',
+  shiftName: 'Ca làm việc',
+  startTime: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+  endTime: '',
+  startingCash: 2000000,
+  expectedCash: 2000000,
+  totalRevenue: 0,
+  orderCount: 0,
+  status: 'active'
+};
 
 interface AppContextType {
   // Core Data
@@ -97,12 +104,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Core Data State
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [purchases, setPurchases] = useState<SupplierPurchase[]>([]);
-  const [currentShift, setCurrentShift] = useState<CashierShift>(CURRENT_SHIFT);
+  const [currentShift, setCurrentShift] = useState<CashierShift>(DEFAULT_SHIFT);
 
   // Load real products from Backend API on mount
   useEffect(() => {
@@ -135,7 +142,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       })
       .catch((err) => {
-        console.warn('API Products fallback to initial state:', err);
+        console.warn('API Products error:', err);
+        setProducts([]);
       });
 
     // Load real customers from Backend API on mount
@@ -203,6 +211,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('API Orders error:', err);
         setOrders([]);
       });
+
+    // Load real active shift from Backend API on mount
+    shiftService.getCurrentShift()
+      .then((activeShift) => {
+        if (activeShift) {
+          setCurrentShift({
+            id: activeShift.id,
+            cashierName: activeShift.cashierName || 'Nhân viên thu ngân',
+            shiftName: activeShift.shiftName,
+            startTime: activeShift.startTime,
+            endTime: activeShift.endTime || '',
+            startingCash: activeShift.startingCash,
+            expectedCash: activeShift.expectedCash || activeShift.startingCash,
+            totalRevenue: activeShift.totalRevenue,
+            orderCount: activeShift.orderCount,
+            status: activeShift.status === 'closed' || activeShift.status === 'Closed' ? 'closed' : 'active'
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('API Shift error:', err);
+      });
   }, []);
 
   // Active POS Cart State (Khởi tạo giỏ hàng trống khi mở ca / vào quầy POS)
@@ -267,7 +297,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const handleRemoveFromCart = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
-    sound.playTrash();
   };
 
   const handleClearCart = () => {
@@ -302,7 +331,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setHeldOrders(prev => [newHeld, ...prev]);
     handleClearCart();
-    sound.playHold();
   };
 
   const handleRestoreHeldOrder = (heldId: string) => {

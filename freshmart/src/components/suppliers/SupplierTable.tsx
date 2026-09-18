@@ -132,11 +132,10 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
                     <button
                       onClick={() => onToggleStatus(sup)}
                       title={sup.isActive ? 'Tạm dừng hợp tác' : 'Kích hoạt hợp tác'}
-                      className={`p-1.5 rounded-lg transition cursor-pointer ${
-                        sup.isActive
+                      className={`p-1.5 rounded-lg transition cursor-pointer ${sup.isActive
                           ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
                           : 'text-emerald-600 hover:bg-emerald-50'
-                      }`}
+                        }`}
                     >
                       <Power className="w-4 h-4" />
                     </button>

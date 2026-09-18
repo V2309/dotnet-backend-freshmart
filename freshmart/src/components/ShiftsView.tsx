@@ -8,7 +8,6 @@ import { ShiftTable } from './shifts/ShiftTable';
 import { OpenShiftModal } from './shifts/OpenShiftModal';
 import { CloseShiftModal } from './shifts/CloseShiftModal';
 import { ShiftReportModal } from './shifts/ShiftReportModal';
-import { sound } from '../utils/sound';
 
 export const ShiftsView: React.FC = () => {
   const {
@@ -38,13 +37,11 @@ export const ShiftsView: React.FC = () => {
   }, [fetchCurrentShift, fetchShifts, fetchEmployees]);
 
   const handleRefresh = () => {
-    sound.playPop();
     fetchCurrentShift();
     fetchShifts(undefined, true);
   };
 
   const handleViewReport = async (shiftId: string) => {
-    sound.playPop();
     setIsReportModalOpen(true);
     await fetchShiftReport(shiftId);
   };
@@ -78,7 +75,6 @@ export const ShiftsView: React.FC = () => {
           {!currentShift && (
             <button
               onClick={() => {
-                sound.playPop();
                 setIsOpenModalOpen(true);
               }}
               className="flex items-center gap-1.5 bg-[#FE9F43] hover:bg-[#E88E35] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -94,11 +90,9 @@ export const ShiftsView: React.FC = () => {
       <CurrentShiftBanner
         currentShift={currentShift}
         onOpenShiftClick={() => {
-          sound.playPop();
           setIsOpenModalOpen(true);
         }}
         onCloseShiftClick={() => {
-          sound.playPop();
           setIsCloseModalOpen(true);
         }}
       />

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
-import { sound } from '../../utils/sound';
 
 export interface SearchInputProps {
   value: string;
@@ -20,7 +19,6 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   onClear
 }) => {
   const handleClear = () => {
-    sound.playPop();
     onChange('');
     if (onClear) onClear();
   };

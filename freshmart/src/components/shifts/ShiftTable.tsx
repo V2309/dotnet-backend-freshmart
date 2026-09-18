@@ -111,11 +111,10 @@ export const ShiftTable: React.FC<ShiftTableProps> = ({ shifts, onViewReport }) 
 
                   {/* Trạng thái */}
                   <td className="px-5 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                      isActive 
-                        ? 'bg-[#E8F8F5] text-[#00A389] border border-[#00A389]/30' 
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isActive
+                        ? 'bg-[#E8F8F5] text-[#00A389] border border-[#00A389]/30'
                         : 'bg-slate-100 text-[#646B72] border border-slate-200'
-                    }`}>
+                      }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#00A389] animate-pulse' : 'bg-slate-400'}`} />
                       {isActive ? 'Đang mở' : 'Đã chốt'}
                     </span>

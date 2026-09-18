@@ -2,7 +2,6 @@ import React from 'react';
 import { ShoppingBag, Trash2, Sparkles, Layers } from 'lucide-react';
 import { CartItem } from '../../types';
 import { POSCartItem } from './POSCartItem';
-import { sound } from '../../utils/sound';
 
 interface POSProductAddedListProps {
   cart: CartItem[];
@@ -41,7 +40,6 @@ export const POSProductAddedList: React.FC<POSProductAddedListProps> = ({
           <button
             onClick={() => {
               if (confirm('Xóa tất cả các mặt hàng đã chọn?')) {
-                sound.playTrash();
                 onClearCart();
               }
             }}

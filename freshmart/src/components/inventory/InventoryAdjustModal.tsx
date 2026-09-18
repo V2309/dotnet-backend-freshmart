@@ -3,7 +3,6 @@ import { X, SlidersHorizontal, Package, AlertCircle, Check } from 'lucide-react'
 import { Product } from '../../types';
 import { AdjustReason, AdjustStockRequest } from '../../types/inventory';
 import { inventoryService } from '../../services/inventory.service';
-import { sound } from '../../utils/sound';
 
 interface InventoryAdjustModalProps {
   isOpen: boolean;
@@ -62,7 +61,6 @@ export const InventoryAdjustModal: React.FC<InventoryAdjustModalProps> = ({
       };
 
       const result = await inventoryService.adjustStock(req);
-      sound.playSuccessChime();
       onSuccess(product.id, result.qtyAfter);
       onClose();
     } catch (err: any) {

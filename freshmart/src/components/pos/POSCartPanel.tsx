@@ -19,7 +19,6 @@ import {
  } from 'lucide-react';
 import { CartItem, Customer } from '../../types';
 import { formatCurrency } from '../../utils/format';
-import { sound } from '../../utils/sound';
 import { customerService } from '../../services/customer.service';
 import { POSProductAddedList } from './POSProductAddedList';
 import { POSOrderModifiers } from './POSOrderModifiers';
@@ -86,7 +85,6 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
     e.stopPropagation();
     navigator.clipboard?.writeText(orderCode);
     setCopiedId(true);
-    sound.playPop();
     setTimeout(() => setCopiedId(false), 1500);
   };
   const customerDropdownRef = useRef<HTMLDivElement>(null);
@@ -479,7 +477,6 @@ export const POSCartPanel: React.FC<POSCartPanelProps> = ({
             disabled={cart.length === 0}
             onClick={() => {
               if (confirm('Xác nhận xóa toàn bộ mặt hàng trong giỏ?')) {
-                sound.playTrash();
                 onClearCart();
               }
             }}

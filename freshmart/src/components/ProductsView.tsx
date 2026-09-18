@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Edit3, 
-  Barcode, 
-  ArrowUpDown, 
-  Package, 
-  Download, 
-  Printer, 
-  Check, 
+import {
+  Search,
+  Plus,
+  Edit3,
+  Barcode,
+  ArrowUpDown,
+  Package,
+  Download,
+  Printer,
+  Check,
   X,
   Layers,
   Sparkles,
@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import { Product, StockStatus } from '../types';
 import { formatCurrency } from '../utils/format';
-import { sound } from '../utils/sound';
 import { DataTable, ColumnDef } from './common';
 import { useProductStore } from '../stores/productStore';
 import { useSupplierStore } from '../stores/supplierStore';
@@ -50,13 +49,13 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   onAdjustStock
 }) => {
   // Load real products, suppliers, and categories from Stores (Database)
-  const { 
-    products: storeProducts, 
-    isLoading: isProductLoading, 
-    fetchProducts, 
-    createProduct, 
-    updateProduct, 
-    quickAdjustStock 
+  const {
+    products: storeProducts,
+    isLoading: isProductLoading,
+    fetchProducts,
+    createProduct,
+    updateProduct,
+    quickAdjustStock
   } = useProductStore();
   const { suppliers, fetchSuppliers } = useSupplierStore();
   const { categories, fetchCategories } = useCategoryStore();
@@ -96,7 +95,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [viewLayout, setViewLayout] = useState<ViewLayout>('table');
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
-  
+
   // Modals
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
@@ -119,7 +118,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   // Copy helper
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedCode(label);
     setTimeout(() => setCopiedCode(null), 1500);
   };
@@ -156,7 +154,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const filteredProducts = useMemo(() => {
     const result = products.filter((p) => {
       const matchCat = selectedCategory === 'all' || p.category === selectedCategory;
-      const matchStatus = 
+      const matchStatus =
         selectedStatus === 'all' ||
         (selectedStatus === 'in_stock' && p.stock > p.minStock) ||
         (selectedStatus === 'low_stock' && p.stock > 0 && p.stock <= p.minStock) ||
@@ -198,7 +196,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const isAllSelected = filteredProducts.length > 0 && selectedProductIds.length === filteredProducts.length;
 
   const toggleSelectAll = () => {
-    sound.playPop();
     if (isAllSelected) {
       setSelectedProductIds([]);
     } else {
@@ -207,7 +204,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   };
 
   const toggleSelectProduct = (id: string) => {
-    sound.playPop();
     if (selectedProductIds.includes(id)) {
       setSelectedProductIds(selectedProductIds.filter(pid => pid !== id));
     } else {
@@ -219,8 +215,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     if (!editingProduct) return;
     const targetCategory = categories.find(c => c.name === editingProduct.category || c.id === editingProduct.category) || categories[0];
     const targetSupplier = suppliers.find(s => s.name === editingProduct.supplier || s.id === editingProduct.supplier);
-
-    sound.playSuccessChime();
     if (onUpdateProduct) {
       onUpdateProduct(editingProduct);
     }
@@ -250,7 +244,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const handleQuickAdjustStock = async (newStock: number) => {
     if (!quickStockProduct) return;
     const stockVal = Math.max(0, newStock);
-    sound.playPop();
     if (onAdjustStock) {
       onAdjustStock(quickStockProduct.id, stockVal);
     }
@@ -278,7 +271,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     }
 
     try {
-      sound.playSuccessChime();
       await createProduct({
         sku: newProdSku || `SP-${Math.floor(100 + Math.random() * 900)}`,
         barcode: newProdBarcode || `893${Math.floor(1000000000 + Math.random() * 9000000000)}`,
@@ -322,13 +314,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
   // Generate SKU helper
   const handleAutoGenerateSKU = () => {
-    sound.playPop();
     const prefix = newProdCategory === 'Đồ uống' ? 'DU' : newProdCategory === 'Bánh kẹo' ? 'BK' : 'SP';
     setNewProdSku(`${prefix}-${Math.floor(1000 + Math.random() * 9000)}`);
   };
 
   const handleAutoGenerateBarcode = () => {
-    sound.playPop();
     setNewProdBarcode(`893${Math.floor(1000000000 + Math.random() * 9000000000)}`);
   };
 
@@ -423,7 +413,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
       header: 'Giá bán niêm yết',
       align: 'right',
       render: (product) => {
-        const margin = product.sellPrice > 0 
+        const margin = product.sellPrice > 0
           ? Math.round(((product.sellPrice - product.costPrice) / product.sellPrice) * 100)
           : 0;
         return (
@@ -447,9 +437,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         const isLow = product.stock > 0 && product.stock <= product.minStock;
         return (
           <div className="inline-flex flex-col items-center">
-            <span className={`text-sm font-black tabular-nums ${
-              isOut ? 'text-[#EA5455]' : isLow ? 'text-[#FFA800]' : 'text-[#212B36]'
-            }`}>
+            <span className={`text-sm font-black tabular-nums ${isOut ? 'text-[#EA5455]' : isLow ? 'text-[#FFA800]' : 'text-[#212B36]'
+              }`}>
               {product.stock}
             </span>
             <span className="text-[10px] text-[#646B72] font-semibold">
@@ -498,7 +487,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={() => {
-              sound.playPop();
               setQuickStockProduct(product);
             }}
             className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
@@ -509,7 +497,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
           <button
             onClick={() => {
-              sound.playPop();
               setEditingProduct(product);
             }}
             className="p-1.5 text-slate-500 hover:text-[#FE9F43] hover:bg-[#FFF5E9] rounded-lg transition cursor-pointer"
@@ -524,7 +511,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
   return (
     <div id="products-view" className="p-4 lg:p-6 space-y-5 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] pb-16 select-none animate-in fade-in-50 duration-200">
-      
+
       {/* 1. Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#EAEAEA] shadow-sm">
         <div>
@@ -540,9 +527,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button 
+          <button
             onClick={() => {
-              sound.playPop();
               fetchProducts(undefined, true);
               fetchSuppliers(undefined, true);
               fetchCategories(undefined, true);
@@ -554,9 +540,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             <span>Làm mới</span>
           </button>
 
-          <button 
+          <button
             onClick={() => {
-              sound.playPop();
               alert(`Đã xuất ${filteredProducts.length} mặt hàng ra file Excel thành công!`);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -567,7 +552,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
           <button
             onClick={() => {
-              sound.playPop();
               alert(`Đã gửi lệnh in danh sách mã vạch sản phẩm đến máy in!`);
             }}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#212B36] border border-[#EAEAEA] rounded-xl text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
@@ -579,7 +563,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           <button
             id="add-new-product-btn"
             onClick={() => {
-              sound.playPop();
               setIsAddModalOpen(true);
             }}
             className="flex items-center gap-1.5 px-4 py-2 bg-linear-to-r from-[#FE9F43] to-[#FFA858] hover:opacity-95 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer"
@@ -697,14 +680,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  sound.playPop();
                   setViewLayout('table');
                 }}
-                className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  viewLayout === 'table'
+                className={`p-1.5 rounded-lg transition cursor-pointer ${viewLayout === 'table'
                     ? 'bg-white text-[#FE9F43] shadow-2xs font-bold'
                     : 'text-[#646B72] hover:text-[#212B36]'
-                }`}
+                  }`}
                 title="Dạng bảng (Table)"
               >
                 <List className="w-4 h-4" />
@@ -712,14 +693,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  sound.playPop();
                   setViewLayout('grid');
                 }}
-                className={`p-1.5 rounded-lg transition cursor-pointer ${
-                  viewLayout === 'grid'
+                className={`p-1.5 rounded-lg transition cursor-pointer ${viewLayout === 'grid'
                     ? 'bg-white text-[#FE9F43] shadow-2xs font-bold'
                     : 'text-[#646B72] hover:text-[#212B36]'
-                }`}
+                  }`}
                 title="Dạng thẻ lưới (Grid)"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -734,14 +713,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             <button
               onClick={() => {
-                sound.playPop();
                 setSelectedCategory('all');
               }}
-              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-                selectedCategory === 'all'
+              className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer ${selectedCategory === 'all'
                   ? 'bg-[#FE9F43] text-white shadow-2xs'
                   : 'bg-[#F8FAFC] text-[#646B72] hover:bg-slate-100 border border-[#EAEAEA]'
-              }`}
+                }`}
             >
               Tất cả ({products.length})
             </button>
@@ -752,14 +729,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 <button
                   key={cat}
                   onClick={() => {
-                    sound.playPop();
                     setSelectedCategory(cat);
                   }}
-                  className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-                    isActive
+                  className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${isActive
                       ? 'bg-[#FE9F43] text-white shadow-2xs'
                       : 'bg-[#F8FAFC] text-[#646B72] hover:bg-slate-100 border border-[#EAEAEA]'
-                  }`}
+                    }`}
                 >
                   <span>{cat}</span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'}`}>
@@ -774,53 +749,45 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => {
-                sound.playPop();
                 setSelectedStatus('all');
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedStatus === 'all'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${selectedStatus === 'all'
                   ? 'bg-slate-800 text-white'
                   : 'text-[#646B72] hover:bg-slate-100'
-              }`}
+                }`}
             >
               Tất cả trạng thái
             </button>
             <button
               onClick={() => {
-                sound.playPop();
                 setSelectedStatus('in_stock');
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedStatus === 'in_stock'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${selectedStatus === 'in_stock'
                   ? 'bg-[#E8F8F5] text-[#00A389] border border-[#00A389]/30 font-black'
                   : 'text-[#646B72] hover:bg-slate-100'
-              }`}
+                }`}
             >
               🟢 Đủ hàng
             </button>
             <button
               onClick={() => {
-                sound.playPop();
                 setSelectedStatus('low_stock');
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedStatus === 'low_stock'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${selectedStatus === 'low_stock'
                   ? 'bg-[#FFF8E6] text-[#FFA800] border border-[#FFA800]/30 font-black'
                   : 'text-[#646B72] hover:bg-slate-100'
-              }`}
+                }`}
             >
               🟡 Sắp hết ({stats.lowStockCount})
             </button>
             <button
               onClick={() => {
-                sound.playPop();
                 setSelectedStatus('out_of_stock');
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                selectedStatus === 'out_of_stock'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${selectedStatus === 'out_of_stock'
                   ? 'bg-[#FEECEC] text-[#EA5455] border border-[#EA5455]/30 font-black'
                   : 'text-[#646B72] hover:bg-slate-100'
-              }`}
+                }`}
             >
               🔴 Hết hàng ({stats.outOfStockCount})
             </button>
@@ -841,7 +808,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                sound.playPop();
                 alert(`Đã xuất ${selectedProductIds.length} mã vạch tem nhãn kích thước 35x22mm.`);
               }}
               className="px-3 py-1.5 bg-[#FE9F43] hover:bg-[#F59030] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
@@ -852,7 +818,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
             <button
               onClick={() => {
-                sound.playTrash();
                 setSelectedProductIds([]);
               }}
               className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl transition cursor-pointer"
@@ -886,16 +851,15 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             const isChecked = selectedProductIds.includes(product.id);
             const isLow = product.stock > 0 && product.stock <= product.minStock;
             const isOut = product.stock <= 0;
-            const margin = product.sellPrice > 0 
+            const margin = product.sellPrice > 0
               ? Math.round(((product.sellPrice - product.costPrice) / product.sellPrice) * 100)
               : 0;
 
             return (
               <div
                 key={product.id}
-                className={`bg-white rounded-2xl border transition-all duration-200 p-4 flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-[#FE9F43]/50 relative group ${
-                  isChecked ? 'border-[#FE9F43] ring-2 ring-[#FE9F43]/20 bg-[#FFFDF9]' : 'border-[#EAEAEA]'
-                }`}
+                className={`bg-white rounded-2xl border transition-all duration-200 p-4 flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-[#FE9F43]/50 relative group ${isChecked ? 'border-[#FE9F43] ring-2 ring-[#FE9F43]/20 bg-[#FFFDF9]' : 'border-[#EAEAEA]'
+                  }`}
               >
                 {/* Top Header Card */}
                 <div>
@@ -947,9 +911,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-[#646B72] block">Tồn kho:</span>
-                      <span className={`text-xs font-black tabular-nums ${
-                        isOut ? 'text-[#EA5455]' : isLow ? 'text-[#FFA800]' : 'text-[#212B36]'
-                      }`}>
+                      <span className={`text-xs font-black tabular-nums ${isOut ? 'text-[#EA5455]' : isLow ? 'text-[#FFA800]' : 'text-[#212B36]'
+                        }`}>
                         {product.stock} {product.unit}
                       </span>
                     </div>
@@ -959,7 +922,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       onClick={() => {
-                        sound.playPop();
                         setQuickStockProduct(product);
                       }}
                       className="py-1.5 px-2 bg-slate-50 hover:bg-amber-50 hover:text-amber-800 border border-[#EAEAEA] rounded-xl text-[11px] font-bold text-[#212B36] transition flex items-center justify-center gap-1 cursor-pointer"
@@ -970,7 +932,6 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                     <button
                       onClick={() => {
-                        sound.playPop();
                         setEditingProduct(product);
                       }}
                       className="py-1.5 px-2 bg-[#FFF5E9] hover:bg-[#FED8AB] border border-[#FED8AB] text-[#FE9F43] rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
@@ -1220,8 +1181,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
       {/* 8. Add New Product Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <form 
-            onSubmit={handleCreateProduct} 
+          <form
+            onSubmit={handleCreateProduct}
             className="bg-white rounded-2xl shadow-2xl border border-[#EAEAEA] w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="px-5 py-4 border-b border-[#EAEAEA] flex items-center justify-between bg-[#F8FAFC]">
@@ -1230,7 +1191,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 <h3 className="text-sm font-black text-[#212B36]">Thêm mặt hàng mới vào kho</h3>
               </div>
               <button
-                type="button" 
+                type="button"
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
               >
@@ -1379,7 +1340,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
             <div className="px-5 py-4 border-t border-[#EAEAEA] bg-[#F8FAFC] flex justify-end gap-2">
               <button
-                type="button" 
+                type="button"
                 onClick={() => setIsAddModalOpen(false)}
                 className="px-4 py-2 text-xs font-bold text-[#646B72] hover:bg-slate-200 rounded-xl transition cursor-pointer"
               >

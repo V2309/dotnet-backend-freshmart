@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Customer } from '../../types/customer';
 import { formatCurrency, formatDate } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface CustomerDetailModalProps {
   isOpen: boolean;
@@ -36,7 +35,6 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard?.writeText(text);
-    sound.playPop();
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   };

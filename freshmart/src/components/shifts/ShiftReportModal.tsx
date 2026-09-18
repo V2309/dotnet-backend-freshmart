@@ -2,7 +2,6 @@ import React from 'react';
 import { X, FileText, Printer, CheckCircle2, User, Clock, DollarSign, ShoppingBag, CreditCard, QrCode } from 'lucide-react';
 import type { ShiftReport } from '../../types/shift';
 import { formatCurrency, formatDateTime } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface ShiftReportModalProps {
   isOpen: boolean;
@@ -20,7 +19,6 @@ export const ShiftReportModal: React.FC<ShiftReportModalProps> = ({
   if (!isOpen) return null;
 
   const handlePrint = () => {
-    sound.playPop();
     window.print();
   };
 
@@ -48,7 +46,6 @@ export const ShiftReportModal: React.FC<ShiftReportModalProps> = ({
             </button>
             <button
               onClick={() => {
-                sound.playPop();
                 onClose();
               }}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-[#646B72] hover:text-[#212B36] hover:bg-slate-100 transition cursor-pointer"
@@ -170,7 +167,6 @@ export const ShiftReportModal: React.FC<ShiftReportModalProps> = ({
         <div className="px-6 py-4 border-t border-[#EAEAEA] flex justify-end bg-white">
           <button
             onClick={() => {
-              sound.playPop();
               onClose();
             }}
             className="px-5 py-2.5 rounded-xl bg-[#212B36] hover:bg-[#344252] text-white text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"

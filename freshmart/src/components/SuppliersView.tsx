@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSupplierStore } from '@/stores/supplierStore';
 import { Supplier, CreateSupplierRequest, UpdateSupplierRequest } from '@/types/supplier';
-import { sound } from '@/utils/sound';
 import {
   SupplierKpis,
   SupplierFilterBar,
@@ -33,18 +32,15 @@ export const SuppliersView: React.FC = () => {
   const handleOpenAddModal = () => {
     setEditingSupplier(null);
     setShowModal(true);
-    sound.playPop();
   };
 
   const handleOpenEditModal = (sup: Supplier) => {
     setEditingSupplier(sup);
     setShowModal(true);
-    sound.playPop();
   };
 
   const handleToggleStatus = async (sup: Supplier) => {
     try {
-      sound.playPop();
       await toggleStatus(sup.id);
     } catch (err: any) {
       alert(err.message || 'Không thể cập nhật trạng thái hợp tác');
@@ -63,7 +59,6 @@ export const SuppliersView: React.FC = () => {
 
     try {
       await deleteSupplier(sup.id);
-      sound.playPop();
     } catch (err: any) {
       alert(err.message || 'Xóa nhà cung cấp thất bại');
     }
@@ -75,7 +70,6 @@ export const SuppliersView: React.FC = () => {
     } else {
       await createSupplier(data as CreateSupplierRequest);
     }
-    sound.playSuccessChime();
   };
 
   return (

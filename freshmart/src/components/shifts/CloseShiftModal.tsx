@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, StopCircle, DollarSign, Calculator, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { Shift, CloseShiftRequest } from '../../types/shift';
 import { formatCurrency } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface CloseShiftModalProps {
   isOpen: boolean;
@@ -34,7 +33,6 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
         actualCash: Number(actualCash) || 0,
         notes: notes.trim() || undefined,
       });
-      sound.playPop();
       onClose();
     } catch (err: any) {
       alert(err.message || 'Chốt ca làm việc thất bại');
@@ -59,7 +57,6 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
           </div>
           <button
             onClick={() => {
-              sound.playPop();
               onClose();
             }}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[#646B72] hover:text-[#212B36] hover:bg-slate-100 transition cursor-pointer"
@@ -153,7 +150,6 @@ export const CloseShiftModal: React.FC<CloseShiftModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                sound.playPop();
                 onClose();
               }}
               className="px-4 py-2.5 text-xs font-bold text-[#646B72] hover:text-[#212B36] hover:bg-slate-100 rounded-xl transition cursor-pointer"

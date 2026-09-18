@@ -2,7 +2,6 @@ import React from 'react';
 import { Plus, Minus, Trash2 } from 'lucide-react';
 import { CartItem } from '../../types';
 import { formatCurrency } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface POSCartItemProps {
   item: CartItem;
@@ -39,7 +38,6 @@ export const POSCartItem: React.FC<POSCartItemProps> = ({
             </h4>
             <button
               onClick={() => {
-                sound.playTrash();
                 onRemove(item.product.id);
               }}
               className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-lg transition-all cursor-pointer opacity-80 group-hover:opacity-100"
@@ -59,7 +57,6 @@ export const POSCartItem: React.FC<POSCartItemProps> = ({
             <div className="flex items-center bg-white border border-slate-200 shadow-2xs rounded-xl p-0.5">
               <button
                 onClick={() => {
-                  sound.playPop();
                   onUpdateQuantity(item.product.id, item.quantity - 1);
                 }}
                 className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition cursor-pointer"
@@ -72,7 +69,6 @@ export const POSCartItem: React.FC<POSCartItemProps> = ({
               </span>
               <button
                 onClick={() => {
-                  sound.playPop();
                   onUpdateQuantity(item.product.id, item.quantity + 1);
                 }}
                 className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-90 transition cursor-pointer"

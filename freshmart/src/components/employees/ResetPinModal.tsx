@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { KeyRound, X, AlertCircle } from 'lucide-react';
 import { useEmployeeStore } from '../../stores/employeeStore';
 import { Employee } from '../../types/employee';
-import { sound } from '../../utils/sound';
 
 interface ResetPinModalProps {
   isOpen: boolean;
@@ -32,7 +31,6 @@ export const ResetPinModal: React.FC<ResetPinModalProps> = ({
 
     try {
       await resetPin(employee.id || employee.code, newPin.trim());
-      sound.playSuccessChime();
       setNewPin('');
       setPinError(null);
       onClose();

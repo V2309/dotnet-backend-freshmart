@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Percent, Truck, Receipt } from 'lucide-react';
-import { sound } from '../../utils/sound';
 
 interface POSOrderModifiersProps {
   taxRate: number;
@@ -84,7 +83,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
         <button
           type="button"
           onClick={() => {
-            sound.playPop();
             setActiveDropdown(activeDropdown === 'tax' ? null : 'tax');
           }}
           className={`w-full h-8.5 flex items-center justify-between px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
@@ -109,7 +107,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => {
-                    sound.playPop();
                     onSetTaxRate(opt.value);
                     setActiveDropdown(null);
                   }}
@@ -136,7 +133,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
         <button
           type="button"
           onClick={() => {
-            sound.playPop();
             setActiveDropdown(activeDropdown === 'shipping' ? null : 'shipping');
           }}
           className={`w-full h-8.5 flex items-center justify-between px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
@@ -161,7 +157,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => {
-                    sound.playPop();
                     onSetShippingFee(opt.value);
                     setActiveDropdown(null);
                   }}
@@ -188,7 +183,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
         <button
           type="button"
           onClick={() => {
-            sound.playPop();
             setActiveDropdown(activeDropdown === 'discount' ? null : 'discount');
           }}
           className={`w-full h-8.5 flex items-center justify-between px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
@@ -213,7 +207,6 @@ export const POSOrderModifiers: React.FC<POSOrderModifiersProps> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => {
-                    sound.playPop();
                     onSetDiscountPercent(opt.value);
                     setActiveDropdown(null);
                   }}

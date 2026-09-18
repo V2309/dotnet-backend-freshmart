@@ -84,6 +84,14 @@ REST ROUTES (STATUS)
 [✅] GET    /api/v1/reports/revenue-trend -> [Đã làm]
 [✅] GET    /api/v1/reports/daily-comparison -> [Đã làm]
 
+[✅] GET    /api/v1/dashboard/full        -> [Đã làm]
+[✅] GET    /api/v1/dashboard/kpi-summary -> [Đã làm]
+[✅] GET    /api/v1/dashboard/sales-purchase-chart -> [Đã làm]
+[✅] GET    /api/v1/dashboard/category-sales-pie -> [Đã làm]
+[✅] GET    /api/v1/dashboard/recent-transactions -> [Đã làm]
+[✅] GET    /api/v1/dashboard/low-stock-alert -> [Đã làm]
+[✅] WS     /hubs/dashboard               -> [Đã làm] (SignalR WebSockets Realtime)
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 NAMING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

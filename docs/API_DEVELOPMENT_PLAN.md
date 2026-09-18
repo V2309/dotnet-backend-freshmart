@@ -350,28 +350,22 @@ Tất cả các API trả về định dạng JSON thống nhất, khớp với 
 
 ---
 
-### Phase 11: Tổng quan Dashboard & KPIs Realtime (`/dashboard` - SAU CÙNG) - `[⏳ CHƯA LÀM]`
-> **Frontend Files**: [DashboardView.tsx](file:///d:/Projects/freshmart/src/components/DashboardView.tsx)  
-> **Lý do triển khai sau cùng**: Dashboard là nơi tổng hợp số liệu từ toàn bộ các phân hệ (Doanh thu bán hàng, Nhập hàng, Trả hàng, Lợi nhuận gộp, Cảnh báo kho, Đơn hàng gần nhất, Ca làm việc). Chỉ khi các API Phase 1 đến 10 hoàn tất, Dashboard mới có đầy đủ nguồn dữ liệu chính xác và tối ưu query.
+### Phase 11: Tổng quan Dashboard & KPIs Realtime (`/dashboard` - SAU CÙNG) - `[✅ ĐÃ HOÀN THÀNH]`
+> **Frontend Files**: [DashboardView.tsx](file:///d:/Projects/freshmart/src/components/DashboardView.tsx), [DashboardPage.tsx](file:///d:/Projects/freshmart/src/pages/Dashboard/DashboardPage.tsx)  
+> **SignalR Hub**: `/hubs/dashboard` (WebSockets Realtime Auto-refresh)  
+> **Database**: Tổng hợp trực tiếp từ `orders`, `order_items`, `purchase_orders`, `products`, `customers`, `shifts`.
 
 #### 11.1. API Dashboard Realtime
-- [ ] **`GET /api/v1/dashboard/kpi-summary`**: Lấy số liệu 4 thẻ KPI đầu trang:
-  - Doanh thu bán hàng hôm nay (`totalSalesRevenue`).
-  - Giá trị đơn nhập hàng (`totalPurchaseValue`).
-  - Lợi nhuận gộp ước tính (`grossProfit`).
-  - Giá trị hàng trả / hủy (`totalSalesReturn`).
-- [ ] **`GET /api/v1/dashboard/sales-purchase-chart`**: Dữ liệu biểu đồ đối chiếu Doanh thu Bán hàng vs Chi phí Nhập hàng theo timeframe (`1D`, `1W`, `1M`, `3M`, `6M`, `1Y`).
-- [ ] **`GET /api/v1/dashboard/category-sales-pie`**: Cơ cấu doanh thu theo nhóm hàng (`CATEGORY_SALES_SHARE`: Đồ uống, Mì & TP, Sữa, Gia vị, Bánh kẹo).
-- [ ] **`GET /api/v1/dashboard/recent-transactions`**: Danh sách giao dịch mới nhất (Tab Đơn bán hàng, Đơn nhập hàng).
-- [ ] **`GET /api/v1/dashboard/low-stock-alert`**: Danh sách mặt hàng chạm ngưỡng tồn kho tối thiểu (`showLowStockAlert`) + Nút nhập hàng nhanh (`onQuickRestock`).
+- [x] **`GET /api/v1/dashboard/full`**: Lấy toàn bộ dữ liệu tổng hợp Dashboard ban đầu. *(Đã làm)*
+- [x] **`GET /api/v1/dashboard/kpi-summary`**: Lấy số liệu 4 thẻ KPI đầu trang & 4 thẻ chi tiết. *(Đã làm)*
+- [x] **`GET /api/v1/dashboard/sales-purchase-chart`**: Dữ liệu biểu đồ đối chiếu Doanh thu Bán hàng vs Chi phí Nhập hàng theo timeframe (`1D`, `1W`, `1M`, `3M`, `6M`, `1Y`). *(Đã làm)*
+- [x] **`GET /api/v1/dashboard/category-sales-pie`**: Cơ cấu doanh thu theo nhóm hàng. *(Đã làm)*
+- [x] **`GET /api/v1/dashboard/recent-transactions`**: Danh sách giao dịch mới nhất. *(Đã làm)*
+- [x] **`GET /api/v1/dashboard/low-stock-alert`**: Danh sách mặt hàng chạm ngưỡng tồn kho tối thiểu. *(Đã làm)*
+- [x] **SignalR Hub `/hubs/dashboard`**: Tự động phát sóng Realtime khi có đơn hàng POS (`Checkout`/`Cancel`), nhập hàng (`Receive`), điều chỉnh kho (`AdjustStock`), mở/đóng ca. *(Đã làm)*
 
 ---
 
-## 5. 🚀 BƯỚC KHỞI ĐỘNG TIẾP THEO
+## 5. 🏆 TỔNG KẾT DỰ ÁN FRESHMART POS SYSTEM
+Toàn bộ 11 Phases API và Giao diện đã được hoàn thành 100%, kết nối Database PostgreSQL thực tế và hỗ trợ Realtime WebSockets qua SignalR!
 
-Quy trình sẽ được thực hiện tuần tự như sau:
-1. **Khởi động**: Triển khai **Phase 1: Đăng nhập & Quản lý Nhân viên (`/login`, `/employees`)**.
-2. **Thực thi**: Xây dựng Route, Controller, Service, DTO Validation & kết nối DB.
-3. **Kiểm thử**: Chạy test case nội bộ (Happy path & Error case), tích hợp thử với component `LoginPage.tsx` / `EmployeesView.tsx`.
-4. **Báo cáo**: Trình bày kết quả kiểm thử cho bạn.
-5. **Xác nhận**: **Đợi bạn gõ "OK"** ➔ Tiếp tục chuyển sang **Phase 2 (Categories & Suppliers)**.

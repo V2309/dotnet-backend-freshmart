@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Product, CartItem, Customer } from '../types';
-import { sound } from '../utils/sound';
 import { 
   POSProductCatalog, 
   POSCartPanel, 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { CashierShift } from '../../types';
 import { formatCurrency } from '../../utils/format';
-import { sound } from '../../utils/sound';
 
 interface ShiftStatusBannerProps {
   currentShift: CashierShift;
@@ -38,7 +37,6 @@ export const ShiftStatusBanner: React.FC<ShiftStatusBannerProps> = ({
 
         <button
           onClick={() => {
-            sound.playPop();
             onCloseShift();
           }}
           className="px-4 py-2 bg-[#212B36] hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
